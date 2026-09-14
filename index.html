@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-slate-900 text-slate-200">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ciné Randomizer - Soirée Canapé</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            appBg: '#0F172A',
+            appCard: '#1E293B',
+            appPrimary: '#E11D48', // Un rouge "cinéma"
+            appPrimaryHover: '#BE123C',
+            appAccent: '#F59E0B', // Or "Popcorn"
+            appText: '#F8FAFC',
+            appMuted: '#64748B'
+          },
+          animation: {
+            'pulse-fast': 'pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* Effet néon pour le résultat gagnant */
+    .neon-text {
+      text-shadow: 0 0 10px rgba(225, 29, 72, 0.7), 0 0 20px rgba(225, 29, 72, 0.5);
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col antialiased selection:bg-appPrimary selection:text-white">
+
+  <header class="bg-appCard border-b border-slate-700 sticky top-0 z-30 shadow-lg">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-3xl">🍿</span>
+        <div>
+          <h1 class="text-xl sm:text-2xl font-black text-appText tracking-tight">Ciné <span class="text-appPrimary">Randomizer</span></h1>
+          <p class="text-xs text-appMuted font-medium">Finis les débats du samedi soir !</p>
+        </div>
+      </div>
+    </div>
+    <!-- Navigation par onglets -->
+    <div class="max-w-4xl mx-auto px-4 flex space-x-2 overflow-x-auto hide-scrollbar text-sm font-bold">
+      <button id="tab-generator" onclick="switchTab('generator')" class="nav-tab text-appPrimary border-b-2 border-appPrimary py-3 px-4 whitespace-nowrap">🎲 Tirage au sort</button>
+      <button id="tab-catalogue" onclick="switchTab('catalogue')" class="nav-tab text-appMuted hover:text-appText border-b-2 border-transparent py-3 px-4 whitespace-nowrap">📚 Notre Catalogue</button>
+    </div>
+  </header>
+
+  <main class="flex-1 w-full max-w-4xl mx-auto px-4 py-6 flex flex-col">
+    
+    <!-- SECTION GÉNÉRATEUR (LA ROULETTE) -->
+    <section id="sec-generator" class="flex flex-col flex-1 space-y-6">
+      
+      <!-- Zone d'affichage du résultat -->
+      <div class="bg-appCard rounded-3xl border border-slate-700 shadow-xl p-8 flex flex-col items-center justify-center text-center min-h-[250px] relative overflow-hidden">
+        <!-- Message par défaut -->
+        <div id="default-screen" class="space-y-3">
+          <div class="text-5xl mb-2">🎬</div>
+          <h2 class="text-2xl font-bold text-slate-300">Prêts pour le film ?</h2>
+          <p class="text-sm text-slate-500">Ajustez vos filtres et lancez la roulette.</p>
+        </div>
+
+        <!-- Écran de roulette (en cours de tirage) -->
+        <div id="roulette-screen" class="hidden w-full">
+          <p class="text-appAccent font-bold text-sm tracking-widest uppercase mb-4 animate-pulse">Tirage en cours...</p>
+          <h2 id="roulette-text" class="text-3xl sm:text-5xl font-black text-white truncate px-2 w-full">Titre</h2>
+        </div>
+
+        <!-- Écran du Gagnant -->
+        <div id="winner-screen" class="hidden w-full flex-col items-center justify-center animate-[fade-in_0.5s_ease-out]">
+          <span class="bg-appPrimary text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide mb-3 shadow-[0_0_10px_rgba(225,29,72,0.5)]">Le Choix Ultime</span>
+          <h2 id="winner-title" class="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 neon-text">Titre du Film</h2>
+          <div id="winner-badges" class="flex flex-wrap justify-center gap-2 mb-6">
+            <!-- Badges injectés en JS -->
+          </div>
+          <button onclick="markWinnerAsSeen()" class="text-xs text-slate-400 hover:text-white underline transition">
+            Marquer comme "Vu" pour ne plus le tirer
+          </button>
+        </div>
+      </div>
+
+      <!-- Le Gros Bouton d'Action -->
+      <button id="btn-draw" onclick="startRoulette()" class="w-full bg-appPrimary hover:bg-appPrimaryHover text-white text-xl sm:text-2xl font-black py-5 rounded-2xl shadow-[0_4px_14px_0_rgba(225,29,72,0.39)] transition-transform active:scale-95 flex items-center justify-center gap-3">
+        <span class="text-2xl">🎰</span> Lancer le tirage !
+      </button>
+
+      <!-- Erreur si aucun film ne correspond -->
+      <div id="error-message" class="hidden bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-xl text-center text-sm font-medium">
+        Aucun film ne correspond à ces critères (ou vous les avez déjà tous vus !). Retirez quelques filtres.
+      </div>
+
+      <!-- Filtres de recherche -->
+      <div class="bg-appCard p-5 rounded-2xl border border-slate-700 space-y-5">
+        <h3 class="font-bold text-slate-300 text-sm uppercase tracking-wider flex items-center justify-between">
+          <span>⚙️ Filtres pour ce soir</span>
+          <button onclick="resetFilters()" class="text-xs text-appPrimary hover:underline normal-case">Réinitialiser</button>
+        </h3>
+        
+        <!-- Filtre Type -->
+        <div>
+          <p class="text-xs text-slate-500 font-bold mb-2">TYPE DE FORMAT</p>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="toggleFilter('type', 'Film')" data-group="type" data-val="Film" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-4 py-2 rounded-xl text-sm font-semibold transition">🍿 Films</button>
+            <button onclick="toggleFilter('type', 'Série')" data-group="type" data-val="Série" class="filter-btn bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 px-4 py-2 rounded-xl text-sm font-semibold transition">📺 Séries</button>
+            <button onclick="toggleFilter('type', 'Documentaire')" data-group="type" data-val="Documentaire" class="filter-btn bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 px-4 py-2 rounded-xl text-sm font-semibold transition">🌍 Documentaires</button>
+          </div>
+        </div>
+
+        <!-- Filtre Plateforme -->
+        <div>
+          <p class="text-xs text-slate-500 font-bold mb-2">DISPONIBLE SUR</p>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="toggleFilter('plateforme', 'Netflix')" data-group="plateforme" data-val="Netflix" class="filter-btn active-filter bg-red-900/30 text-red-400 border border-red-800/50 px-4 py-2 rounded-xl text-sm font-semibold transition">Netflix</button>
+            <button onclick="toggleFilter('plateforme', 'Prime')" data-group="plateforme" data-val="Prime" class="filter-btn active-filter bg-blue-900/30 text-blue-400 border border-blue-800/50 px-4 py-2 rounded-xl text-sm font-semibold transition">Prime Video</button>
+            <button onclick="toggleFilter('plateforme', 'Disney+')" data-group="plateforme" data-val="Disney+" class="filter-btn active-filter bg-indigo-900/30 text-indigo-400 border border-indigo-800/50 px-4 py-2 rounded-xl text-sm font-semibold transition">Disney+</button>
+            <button onclick="toggleFilter('plateforme', 'Canal+')" data-group="plateforme" data-val="Canal+" class="filter-btn active-filter bg-slate-800 text-slate-300 border border-slate-600 px-4 py-2 rounded-xl text-sm font-semibold transition">Canal+</button>
+          </div>
+        </div>
+
+        <!-- Filtre Genre -->
+        <div>
+          <p class="text-xs text-slate-500 font-bold mb-2">HUMEUR / GENRE</p>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="toggleFilter('genre', 'Comédie')" data-group="genre" data-val="Comédie" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold">😂 Comédie</button>
+            <button onclick="toggleFilter('genre', 'Action')" data-group="genre" data-val="Action" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold">💥 Action</button>
+            <button onclick="toggleFilter('genre', 'Sci-Fi / Fantasy')" data-group="genre" data-val="Sci-Fi / Fantasy" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold">🛸 Sci-Fi / Fantasy</button>
+            <button onclick="toggleFilter('genre', 'Thriller / Horreur')" data-group="genre" data-val="Thriller / Horreur" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold">🔪 Thriller / Horreur</button>
+            <button onclick="toggleFilter('genre', 'Drame')" data-group="genre" data-val="Drame" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold">🎭 Drame</button>
+            <button onclick="toggleFilter('genre', 'Animation')" data-group="genre" data-val="Animation" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold">🎨 Animation</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-catalogue" class="hidden flex-col flex-1 space-y-4">
+      <div class="flex items-center justify-between gap-4 bg-appCard p-4 rounded-2xl border border-slate-700">
+        <div class="relative flex-1">
+          <input type="text" id="searchInput" oninput="renderCatalogue()" placeholder="Rechercher un titre..." class="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-600 rounded-xl text-sm text-white focus:outline-none focus:border-appPrimary focus:ring-1 focus:ring-appPrimary transition">
+          <span class="absolute left-3.5 top-2 text-slate-400">🔍</span>
+        </div>
+        <div class="text-xs text-slate-400 font-bold whitespace-nowrap"><span id="catalogue-count">0</span> œuvres</div>
+      </div>
+
+      <div class="flex justify-end gap-2 text-xs font-medium px-2">
+        <button onclick="filterSeen(false)" id="btn-seen-false" class="text-appPrimary underline">À voir</button>
+        <span class="text-slate-600">|</span>
+        <button onclick="filterSeen(true)" id="btn-seen-true" class="text-slate-500 hover:text-slate-300">Déjà vus</button>
+      </div>
+
+      <!-- Grille du catalogue -->
+      <div id="catalogue-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-10">
+        <!-- Rempli par JS -->
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // --- LA BASE DE DONNÉES DES FILMS & SÉRIES ---
+    // Pour ajouter un film, copiez-collez une ligne juste avant le "];" à la fin, comme pour les recettes !
+    const database = [
+      // NETFLIX
+      { id: 1, titre: "Stranger Things", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 2, titre: "Le Jeu de la Dame", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 3, titre: "Black Mirror", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 4, titre: "La Casa de Papel", genre: "Action", plateforme: "Netflix", type: "Série", duree: "45min/ép" },
+      { id: 5, titre: "Arcane", genre: "Animation", plateforme: "Netflix", type: "Série", duree: "40min/ép" },
+      { id: 6, titre: "Don't Look Up", genre: "Comédie", plateforme: "Netflix", type: "Film", duree: "2h18" },
+      { id: 7, titre: "Shutter Island", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Film", duree: "2h18" },
+      { id: 8, titre: "Tyler Rake (Extraction)", genre: "Action", plateforme: "Netflix", type: "Film", duree: "1h56" },
+      { id: 9, titre: "Le Dîner de Cons", genre: "Comédie", plateforme: "Netflix", type: "Film", duree: "1h22" },
+      { id: 10, titre: "Marriage Story", genre: "Drame", plateforme: "Netflix", type: "Film", duree: "2h17" },
+      { id: 11, titre: "Notre Planète", genre: "Documentaire", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 12, titre: "L'Arnaqueur de Tinder", genre: "Documentaire", plateforme: "Netflix", type: "Film", duree: "1h54" },
+      
+      // PRIME VIDEO
+      { id: 13, titre: "The Boys", genre: "Action", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 14, titre: "Fallout", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "55min/ép" },
+      { id: 15, titre: "The Office (US)", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "22min/ép" },
+      { id: 16, titre: "Fleabag", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "25min/ép" },
+      { id: 17, titre: "Invincible", genre: "Animation", plateforme: "Prime", type: "Série", duree: "45min/ép" },
+      { id: 18, titre: "Le Seigneur des Anneaux : La Communauté de l'Anneau", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h58" },
+      { id: 19, titre: "Gladiator", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h35" },
+      { id: 20, titre: "Interstellar", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h49" },
+      { id: 21, titre: "Les Évadés", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h22" },
+      { id: 22, titre: "Saltburn", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h11" },
+      { id: 23, titre: "Orelsan : Montre jamais ça à personne", genre: "Documentaire", plateforme: "Prime", type: "Série", duree: "40min/ép" },
+      { id: 24, titre: "Clarkson à la ferme", genre: "Documentaire", plateforme: "Prime", type: "Série", duree: "45min/ép" },
+
+      // DISNEY+
+      { id: 25, titre: "The Mandalorian", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Série", duree: "40min/ép" },
+      { id: 26, titre: "Loki", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Série", duree: "50min/ép" },
+      { id: 27, titre: "The Bear", genre: "Drame", plateforme: "Disney+", type: "Série", duree: "30min/ép" },
+      { id: 28, titre: "Only Murders in the Building", genre: "Comédie", plateforme: "Disney+", type: "Série", duree: "35min/ép" },
+      { id: 29, titre: "Les Simpson", genre: "Animation", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
+      { id: 30, titre: "Shōgun", genre: "Drame", plateforme: "Disney+", type: "Série", duree: "1h/ép" },
+      { id: 31, titre: "Vice Versa", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h35" },
+      { id: 32, titre: "Avengers : Endgame", genre: "Action", plateforme: "Disney+", type: "Film", duree: "3h01" },
+      { id: 33, titre: "Toy Story", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h21" },
+      { id: 34, titre: "Le Menu", genre: "Thriller / Horreur", plateforme: "Disney+", type: "Film", duree: "1h47" },
+      { id: 35, titre: "Pauvres Créatures", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h21" },
+      { id: 36, titre: "Free Solo", genre: "Documentaire", plateforme: "Disney+", type: "Film", duree: "1h40" },
+      { id: 37, titre: "The Beatles : Get Back", genre: "Documentaire", plateforme: "Disney+", type: "Série", duree: "2h/ép" },
+
+      // CANAL+
+      { id: 38, titre: "Le Bureau des Légendes", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 39, titre: "D'Argent et de Sang", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 40, titre: "B.R.I.", genre: "Action", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 41, titre: "Dune : Deuxième Partie", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Film", duree: "2h46" },
+      { id: 42, titre: "Anatomie d'une chute", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "2h31" },
+      { id: 43, titre: "Spider-Man : Across the Spider-Verse", genre: "Animation", plateforme: "Canal+", type: "Film", duree: "2h20" },
+      { id: 44, titre: "Bac Nord", genre: "Action", plateforme: "Canal+", type: "Film", duree: "1h45" },
+      { id: 45, titre: "Le Règne Animal", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Film", duree: "2h08" },
+      { id: 46, titre: "Astérix & Obélix : Mission Cléopâtre", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h47" },
+      { id: 47, titre: "SuperGrave", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h53" },
+      { id: 48, titre: "Yannick", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h07" },
+      { id: 49, titre: "L'Innocent", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h39" },
+      { id: 50, titre: "La Panthère des Neiges", genre: "Documentaire", plateforme: "Canal+", type: "Film", duree: "1h32" },
+      
+      // --- LES 100 NOUVEAUX AJOUTS ---
+      // NETFLIX (Nouveaux)
+      { id: 51, titre: "Peaky Blinders", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 52, titre: "Breaking Bad", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 53, titre: "Better Call Saul", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 54, titre: "The Crown", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 55, titre: "Dark", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 56, titre: "The Witcher", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 57, titre: "Narcos", genre: "Action", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 58, titre: "Ozark", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 59, titre: "Mindhunter", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 60, titre: "Sex Education", genre: "Comédie", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 61, titre: "Brooklyn Nine-Nine", genre: "Comédie", plateforme: "Netflix", type: "Série", duree: "22min/ép" },
+      { id: 62, titre: "BoJack Horseman", genre: "Animation", plateforme: "Netflix", type: "Série", duree: "25min/ép" },
+      { id: 63, titre: "Rick et Morty", genre: "Animation", plateforme: "Netflix", type: "Série", duree: "22min/ép" },
+      { id: 64, titre: "Cyberpunk: Edgerunners", genre: "Animation", plateforme: "Netflix", type: "Série", duree: "25min/ép" },
+      { id: 65, titre: "Squid Game", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 66, titre: "Lupin", genre: "Action", plateforme: "Netflix", type: "Série", duree: "45min/ép" },
+      { id: 67, titre: "Mercredi", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "45min/ép" },
+      { id: 68, titre: "The Sandman", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 69, titre: "The Irishman", genre: "Drame", plateforme: "Netflix", type: "Film", duree: "3h29" },
+      { id: 70, titre: "Roma", genre: "Drame", plateforme: "Netflix", type: "Film", duree: "2h15" },
+      { id: 71, titre: "Glass Onion", genre: "Comédie", plateforme: "Netflix", type: "Film", duree: "2h19" },
+      { id: 72, titre: "The Killer", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Film", duree: "1h58" },
+      { id: 73, titre: "Le Cercle des Neiges", genre: "Drame", plateforme: "Netflix", type: "Film", duree: "2h24" },
+      { id: 74, titre: "Extraction 2", genre: "Action", plateforme: "Netflix", type: "Film", duree: "2h02" },
+      { id: 75, titre: "The Old Guard", genre: "Action", plateforme: "Netflix", type: "Film", duree: "2h05" },
+
+      // PRIME VIDEO (Nouveaux)
+      { id: 76, titre: "Les Anneaux de Pouvoir", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 77, titre: "The Expanse", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "45min/ép" },
+      { id: 78, titre: "Reacher", genre: "Action", plateforme: "Prime", type: "Série", duree: "50min/ép" },
+      { id: 79, titre: "Jack Ryan", genre: "Action", plateforme: "Prime", type: "Série", duree: "50min/ép" },
+      { id: 80, titre: "La Fabuleuse Mme Maisel", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "50min/ép" },
+      { id: 81, titre: "Good Omens", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "50min/ép" },
+      { id: 82, titre: "Mr. Robot", genre: "Thriller / Horreur", plateforme: "Prime", type: "Série", duree: "45min/ép" },
+      { id: 83, titre: "Dexter", genre: "Thriller / Horreur", plateforme: "Prime", type: "Série", duree: "50min/ép" },
+      { id: 84, titre: "Parks and Recreation", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "22min/ép" },
+      { id: 85, titre: "Upload", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "30min/ép" },
+      { id: 86, titre: "La Roue du Temps", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 87, titre: "La Légende de Vox Machina", genre: "Animation", plateforme: "Prime", type: "Série", duree: "25min/ép" },
+      { id: 88, titre: "Hazbin Hotel", genre: "Animation", plateforme: "Prime", type: "Série", duree: "25min/ép" },
+      { id: 89, titre: "Le Loup de Wall Street", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "3h00" },
+      { id: 90, titre: "The Batman", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h56" },
+      { id: 91, titre: "Top Gun: Maverick", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h10" },
+      { id: 92, titre: "Fight Club", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h19" },
+      { id: 93, titre: "Matrix", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h16" },
+      { id: 94, titre: "Jurassic Park", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h07" },
+      { id: 95, titre: "Dune (Partie 1)", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h35" },
+      { id: 96, titre: "Mad Max: Fury Road", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h00" },
+      { id: 97, titre: "Arrête-moi si tu peux", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h21" },
+      { id: 98, titre: "The Truman Show", genre: "Drame", plateforme: "Prime", type: "Film", duree: "1h43" },
+      { id: 99, titre: "Le Fabuleux Destin d'Amélie Poulain", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h02" },
+      { id: 100, titre: "Seven", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h07" },
+
+      // DISNEY+ (Nouveaux)
+      { id: 101, titre: "Andor", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Série", duree: "45min/ép" },
+      { id: 102, titre: "WandaVision", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Série", duree: "40min/ép" },
+      { id: 103, titre: "Daredevil", genre: "Action", plateforme: "Disney+", type: "Série", duree: "55min/ép" },
+      { id: 104, titre: "The Punisher", genre: "Action", plateforme: "Disney+", type: "Série", duree: "50min/ép" },
+      { id: 105, titre: "X-Men '97", genre: "Animation", plateforme: "Disney+", type: "Série", duree: "30min/ép" },
+      { id: 106, titre: "Souvenirs de Gravity Falls", genre: "Animation", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
+      { id: 107, titre: "Futurama", genre: "Animation", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
+      { id: 108, titre: "Malcolm", genre: "Comédie", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
+      { id: 109, titre: "How I Met Your Mother", genre: "Comédie", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
+      { id: 110, titre: "Desperate Housewives", genre: "Drame", plateforme: "Disney+", type: "Série", duree: "45min/ép" },
+      { id: 111, titre: "Lost : Les Disparus", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Série", duree: "45min/ép" },
+      { id: 112, titre: "Prison Break", genre: "Thriller / Horreur", plateforme: "Disney+", type: "Série", duree: "45min/ép" },
+      { id: 113, titre: "American Horror Story", genre: "Thriller / Horreur", plateforme: "Disney+", type: "Série", duree: "50min/ép" },
+      { id: 114, titre: "Dopesick", genre: "Drame", plateforme: "Disney+", type: "Série", duree: "1h/ép" },
+      { id: 115, titre: "Le Roi Lion", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h29" },
+      { id: 116, titre: "Coco", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h45" },
+      { id: 117, titre: "Wall-E", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h38" },
+      { id: 118, titre: "Ratatouille", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h51" },
+      { id: 119, titre: "L'Empire Contre-Attaque", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h04" },
+      { id: 120, titre: "Rogue One", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h13" },
+      { id: 121, titre: "Avengers : Infinity War", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h29" },
+      { id: 122, titre: "Les Gardiens de la Galaxie", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h01" },
+      { id: 123, titre: "Deadpool", genre: "Comédie", plateforme: "Disney+", type: "Film", duree: "1h48" },
+      { id: 124, titre: "Alien, le huitième passager", genre: "Thriller / Horreur", plateforme: "Disney+", type: "Film", duree: "1h57" },
+      { id: 125, titre: "Avatar", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h42" },
+
+      // CANAL+ (Nouveaux)
+      { id: 126, titre: "Engrenages", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "55min/ép" },
+      { id: 127, titre: "Hippocrate", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 128, titre: "Validé", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "30min/ép" },
+      { id: 129, titre: "La Flamme", genre: "Comédie", plateforme: "Canal+", type: "Série", duree: "30min/ép" },
+      { id: 130, titre: "Le Flambeau", genre: "Comédie", plateforme: "Canal+", type: "Série", duree: "30min/ép" },
+      { id: 131, titre: "Baron Noir", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "55min/ép" },
+      { id: 132, titre: "Versailles", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "55min/ép" },
+      { id: 133, titre: "Tokyo Vice", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Série", duree: "1h/ép" },
+      { id: 134, titre: "Yellowjackets", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Série", duree: "1h/ép" },
+      { id: 135, titre: "Halo", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 136, titre: "Gomorra", genre: "Action", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 137, titre: "Le Comte de Monte-Cristo", genre: "Action", plateforme: "Canal+", type: "Film", duree: "2h58" },
+      { id: 138, titre: "Oppenheimer", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "3h00" },
+      { id: 139, titre: "Barbie", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h54" },
+      { id: 140, titre: "Mission: Impossible - Dead Reckoning", genre: "Action", plateforme: "Canal+", type: "Film", duree: "2h43" },
+      { id: 141, titre: "John Wick : Chapitre 4", genre: "Action", plateforme: "Canal+", type: "Film", duree: "2h49" },
+      { id: 142, titre: "Babylon", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "3h09" },
+      { id: 143, titre: "The Fabelmans", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "2h31" },
+      { id: 144, titre: "Killers of the Flower Moon", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "3h26" },
+      { id: 145, titre: "Parasite", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Film", duree: "2h12" },
+      { id: 146, titre: "Everything Everywhere All at Once", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Film", duree: "2h19" },
+      { id: 147, titre: "Le Garçon et le Héron", genre: "Animation", plateforme: "Canal+", type: "Film", duree: "2h04" },
+      { id: 148, titre: "Sans Filtre", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "2h27" },
+      { id: 149, titre: "Drive My Car", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "2h59" },
+      { id: 150, titre: "Un P'tit Truc en Plus", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h39" },
+      
+      // --- LA MÉGA EXTENSION : 150 NOUVEAUX TITRES ---
+      // NETFLIX (Séries & Films)
+      { id: 151, titre: "La Chronique des Bridgerton", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 152, titre: "You", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 153, titre: "Lucifer", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "45min/ép" },
+      { id: 154, titre: "Sense8", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 155, titre: "Altered Carbon", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "55min/ép" },
+      { id: 156, titre: "The Last Kingdom", genre: "Action", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 157, titre: "Elite", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 158, titre: "Emily in Paris", genre: "Comédie", plateforme: "Netflix", type: "Série", duree: "30min/ép" },
+      { id: 159, titre: "Heartstopper", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "30min/ép" },
+      { id: 160, titre: "Vikings", genre: "Action", plateforme: "Netflix", type: "Série", duree: "45min/ép" },
+      { id: 161, titre: "The Haunting of Hill House", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 162, titre: "Umbrella Academy", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 163, titre: "Outlander", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 164, titre: "Blue Eye Samurai", genre: "Animation", plateforme: "Netflix", type: "Série", duree: "45min/ép" },
+      { id: 165, titre: "Love, Death & Robots", genre: "Animation", plateforme: "Netflix", type: "Série", duree: "15min/ép" },
+      { id: 166, titre: "The Good Place", genre: "Comédie", plateforme: "Netflix", type: "Série", duree: "22min/ép" },
+      { id: 167, titre: "Community", genre: "Comédie", plateforme: "Netflix", type: "Série", duree: "22min/ép" },
+      { id: 168, titre: "Superstore", genre: "Comédie", plateforme: "Netflix", type: "Série", duree: "22min/ép" },
+      { id: 169, titre: "Klaus", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "1h37" },
+      { id: 170, titre: "Le Voyage de Chihiro", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "2h05" },
+      { id: 171, titre: "Princesse Mononoké", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "2h14" },
+      { id: 172, titre: "Le Château ambulant", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "1h59" },
+      { id: 173, titre: "Mon voisin Totoro", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "1h26" },
+      { id: 174, titre: "Kiki la petite sorcière", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "1h43" },
+      { id: 175, titre: "Inception", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Film", duree: "2h28" },
+      { id: 176, titre: "Shrek", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "1h30" },
+      { id: 177, titre: "Shrek 2", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "1h33" },
+      { id: 178, titre: "Pulp Fiction", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Film", duree: "2h34" },
+      { id: 179, titre: "Django Unchained", genre: "Action", plateforme: "Netflix", type: "Film", duree: "2h45" },
+      { id: 180, titre: "Inglourious Basterds", genre: "Action", plateforme: "Netflix", type: "Film", duree: "2h33" },
+      { id: 181, titre: "The Big Lebowski", genre: "Comédie", plateforme: "Netflix", type: "Film", duree: "1h57" },
+      { id: 182, titre: "Les Affranchis", genre: "Drame", plateforme: "Netflix", type: "Film", duree: "2h26" },
+      { id: 183, titre: "Scarface", genre: "Drame", plateforme: "Netflix", type: "Film", duree: "2h50" },
+      { id: 184, titre: "Le Parrain", genre: "Drame", plateforme: "Netflix", type: "Film", duree: "2h55" },
+      { id: 185, titre: "Le Parrain II", genre: "Drame", plateforme: "Netflix", type: "Film", duree: "3h22" },
+      { id: 186, titre: "Red Notice", genre: "Action", plateforme: "Netflix", type: "Film", duree: "1h58" },
+      { id: 187, titre: "The Gray Man", genre: "Action", plateforme: "Netflix", type: "Film", duree: "2h02" },
+      { id: 188, titre: "Enola Holmes", genre: "Comédie", plateforme: "Netflix", type: "Film", duree: "2h03" },
+      { id: 189, titre: "Les Mitchell contre les machines", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "1h54" },
+      { id: 190, titre: "Formula 1 : Pilotes de leur destin", genre: "Documentaire", plateforme: "Netflix", type: "Série", duree: "45min/ép" },
+
+      // PRIME VIDEO (Séries & Films)
+      { id: 191, titre: "The Peripheral", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 192, titre: "Le Maître du Haut Château", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 193, titre: "Carnival Row", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "55min/ép" },
+      { id: 194, titre: "Gen V", genre: "Action", plateforme: "Prime", type: "Série", duree: "45min/ép" },
+      { id: 195, titre: "Mr & Mrs Smith", genre: "Action", plateforme: "Prime", type: "Série", duree: "50min/ép" },
+      { id: 196, titre: "Bosch", genre: "Drame", plateforme: "Prime", type: "Série", duree: "45min/ép" },
+      { id: 197, titre: "Sneaky Pete", genre: "Drame", plateforme: "Prime", type: "Série", duree: "50min/ép" },
+      { id: 198, titre: "The Grand Tour", genre: "Documentaire", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 199, titre: "Le Seigneur des Anneaux : Les Deux Tours", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h59" },
+      { id: 200, titre: "Le Seigneur des Anneaux : Le Retour du Roi", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "3h21" },
+      { id: 201, titre: "Le Hobbit : Un voyage inattendu", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h49" },
+      { id: 202, titre: "Casino Royale", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h24" },
+      { id: 203, titre: "Skyfall", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h23" },
+      { id: 204, titre: "Mourir peut attendre", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h43" },
+      { id: 205, titre: "Creed : L'Héritage de Rocky Balboa", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h13" },
+      { id: 206, titre: "Robocop", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h42" },
+      { id: 207, titre: "Terminator 2 : Le Jugement dernier", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h17" },
+      { id: 208, titre: "Retour vers le futur", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "1h56" },
+      { id: 209, titre: "Retour vers le futur II", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "1h48" },
+      { id: 210, titre: "Retour vers le futur III", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "1h58" },
+      { id: 211, titre: "E.T. l'extra-terrestre", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "1h55" },
+      { id: 212, titre: "Les Dents de la Mer", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h04" },
+      { id: 213, titre: "Jurassic World", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h04" },
+      { id: 214, titre: "John Wick", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h41" },
+      { id: 215, titre: "John Wick 2", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h02" },
+      { id: 216, titre: "John Wick Parabellum", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h10" },
+      { id: 217, titre: "Hunger Games", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h22" },
+      { id: 218, titre: "Hunger Games : L'Embrasement", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h26" },
+      { id: 219, titre: "Twilight - Chapitre 1", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h02" },
+      { id: 220, titre: "The Revenant", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h36" },
+      { id: 221, titre: "Il faut sauver le soldat Ryan", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h49" },
+      { id: 222, titre: "Tenet", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h30" },
+      { id: 223, titre: "Gravity", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "1h31" },
+      { id: 224, titre: "Seul au monde", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h23" },
+      { id: 225, titre: "Very Bad Trip", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h40" },
+      { id: 226, titre: "Very Bad Trip 2", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h42" },
+      { id: 227, titre: "Mamma Mia!", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h48" },
+      { id: 228, titre: "Love Actually", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h15" },
+      { id: 229, titre: "The Holiday", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h16" },
+      { id: 230, titre: "Notting Hill", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h04" },
+
+      // DISNEY+ (Séries & Films)
+      { id: 231, titre: "Star Wars : Un Nouvel Espoir", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h01" },
+      { id: 232, titre: "Star Wars : Le Retour du Jedi", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h11" },
+      { id: 233, titre: "Star Wars: The Clone Wars", genre: "Animation", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
+      { id: 234, titre: "Star Wars Rebels", genre: "Animation", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
+      { id: 235, titre: "Ahsoka", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Série", duree: "45min/ép" },
+      { id: 236, titre: "Iron Man", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h06" },
+      { id: 237, titre: "Captain America : Le Soldat de l'Hiver", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h16" },
+      { id: 238, titre: "Thor : Ragnarok", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h10" },
+      { id: 239, titre: "Black Panther", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h14" },
+      { id: 240, titre: "Les Gardiens de la Galaxie Vol. 2", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h16" },
+      { id: 241, titre: "Les Gardiens de la Galaxie Vol. 3", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h30" },
+      { id: 242, titre: "Logan", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h17" },
+      { id: 243, titre: "X-Men : Days of Future Past", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h11" },
+      { id: 244, titre: "Monstres & Cie", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h32" },
+      { id: 245, titre: "Le Monde de Nemo", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h40" },
+      { id: 246, titre: "Les Indestructibles", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h55" },
+      { id: 247, titre: "Là-Haut", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h36" },
+      { id: 248, titre: "Toy Story 2", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h32" },
+      { id: 249, titre: "Toy Story 3", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h43" },
+      { id: 250, titre: "Aladdin", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h30" },
+      { id: 251, titre: "La Belle et la Bête", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h24" },
+      { id: 252, titre: "Mulan", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h28" },
+      { id: 253, titre: "Atlanta", genre: "Comédie", plateforme: "Disney+", type: "Série", duree: "30min/ép" },
+      { id: 254, titre: "Scrubs", genre: "Comédie", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
+      { id: 255, titre: "X-Files", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Série", duree: "45min/ép" },
+      { id: 256, titre: "24 Heures Chrono", genre: "Action", plateforme: "Disney+", type: "Série", duree: "45min/ép" },
+      { id: 257, titre: "Buffy contre les vampires", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Série", duree: "45min/ép" },
+      { id: 258, titre: "Predator", genre: "Thriller / Horreur", plateforme: "Disney+", type: "Film", duree: "1h47" },
+      { id: 259, titre: "Piège de Cristal (Die Hard)", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h12" },
+      { id: 260, titre: "Titanic", genre: "Drame", plateforme: "Disney+", type: "Film", duree: "3h14" },
+      { id: 261, titre: "Avatar : La Voie de l'eau", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "3h12" },
+      { id: 262, titre: "The Grand Budapest Hotel", genre: "Comédie", plateforme: "Disney+", type: "Film", duree: "1h39" },
+      { id: 263, titre: "Little Miss Sunshine", genre: "Comédie", plateforme: "Disney+", type: "Film", duree: "1h41" },
+      { id: 264, titre: "Le Diable s'habille en Prada", genre: "Comédie", plateforme: "Disney+", type: "Film", duree: "1h49" },
+      { id: 265, titre: "Sans un bruit", genre: "Thriller / Horreur", plateforme: "Disney+", type: "Film", duree: "1h30" },
+
+      // CANAL+ & APPLE TV+ INCLUS (Séries & Films)
+      { id: 266, titre: "Severance", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 267, titre: "Ted Lasso", genre: "Comédie", plateforme: "Canal+", type: "Série", duree: "35min/ép" },
+      { id: 268, titre: "The Morning Show", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "1h/ép" },
+      { id: 269, titre: "Silo", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 270, titre: "For All Mankind", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Série", duree: "1h/ép" },
+      { id: 271, titre: "Foundation", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Série", duree: "55min/ép" },
+      { id: 272, titre: "Slow Horses", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Série", duree: "45min/ép" },
+      { id: 273, titre: "Shrinking", genre: "Comédie", plateforme: "Canal+", type: "Série", duree: "35min/ép" },
+      { id: 274, titre: "Bref", genre: "Comédie", plateforme: "Canal+", type: "Série", duree: "2min/ép" },
+      { id: 275, titre: "Platane", genre: "Comédie", plateforme: "Canal+", type: "Série", duree: "35min/ép" },
+      { id: 276, titre: "Les Revenants", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 277, titre: "Braquo", genre: "Action", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 278, titre: "Mafiosa", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 279, titre: "The Young Pope", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "55min/ép" },
+      { id: 280, titre: "Le Grand Bain", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "2h02" },
+      { id: 281, titre: "Intouchables", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h52" },
+      { id: 282, titre: "La Cité de la Peur", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h39" },
+      { id: 283, titre: "Les Bronzés font du ski", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h30" },
+      { id: 284, titre: "Astérix - Le Domaine des Dieux", genre: "Animation", plateforme: "Canal+", type: "Film", duree: "1h25" },
+      { id: 285, titre: "Illusions Perdues", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "2h29" },
+      { id: 286, titre: "Boîte Noire", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Film", duree: "2h09" },
+      { id: 287, titre: "Le Chant du Loup", genre: "Action", plateforme: "Canal+", type: "Film", duree: "1h55" },
+      { id: 288, titre: "Novembre", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Film", duree: "1h46" },
+      { id: 289, titre: "Les Trois Mousquetaires : D'Artagnan", genre: "Action", plateforme: "Canal+", type: "Film", duree: "2h01" },
+      { id: 290, titre: "Les Trois Mousquetaires : Milady", genre: "Action", plateforme: "Canal+", type: "Film", duree: "1h55" },
+      { id: 291, titre: "La Nuit du 12", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Film", duree: "1h55" },
+      { id: 292, titre: "En Corps", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h57" },
+      { id: 293, titre: "Revoir Paris", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "1h45" },
+      { id: 294, titre: "OSS 117 : Le Caire, nid d'espions", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h39" },
+      { id: 295, titre: "OSS 117 : Rio ne répond plus", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h40" },
+      { id: 296, titre: "Le Prénom", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h49" },
+      { id: 297, titre: "Les Petits Mouchoirs", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "2h34" },
+      { id: 298, titre: "Neuilly sa mère !", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h30" },
+      { id: 299, titre: "Le Cinquième Élément", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Film", duree: "2h06" },
+      { id: 300, titre: "Léon", genre: "Action", plateforme: "Canal+", type: "Film", duree: "2h13" },
+      
+      // --- FILMS D'ANIMATION PRIME VIDEO ---
+      { id: 301, titre: "Moi, Moche et Méchant", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h35" },
+      { id: 302, titre: "Moi, Moche et Méchant 2", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h38" },
+      { id: 303, titre: "Kung Fu Panda", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h32" },
+      { id: 304, titre: "Dragons", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h38" },
+      { id: 305, titre: "Tous en Scène", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h48" },
+      { id: 306, titre: "Le Chat Potté", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h30" },
+      { id: 307, titre: "Les Minions", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h31" },
+      { id: 308, titre: "Hôtel Transylvanie", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h31" },
+      { id: 309, titre: "Madagascar", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h26" },
+      { id: 310, titre: "Le Prince d'Égypte", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h39" },
+      { id: 311, titre: "L'Âge de Glace", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h21" },
+      { id: 312, titre: "Megamind", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h35" },
+      { id: 313, titre: "Le Grinch", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h25" },
+      { id: 314, titre: "Wallace et Gromit : Le Mystère du lapin-garou", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h25" },
+      { id: 315, titre: "Evangelion: 3.0+1.0 Thrice Upon a Time", genre: "Animation", plateforme: "Prime", type: "Film", duree: "2h35" },
+      
+      // --- L'ULTIME EXTENSION : EN ROUTE VERS LES 600 ---
+      
+      // BLOCK 1 : SAGAS ET CLASSIQUES (Films)
+      { id: 316, titre: "Harry Potter à l'école des sorciers", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h32" },
+      { id: 317, titre: "Harry Potter et la Chambre des secrets", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h41" },
+      { id: 318, titre: "Harry Potter et le Prisonnier d'Azkaban", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h22" },
+      { id: 319, titre: "Harry Potter et la Coupe de feu", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h37" },
+      { id: 320, titre: "Harry Potter et l'Ordre du Phénix", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h18" },
+      { id: 321, titre: "Harry Potter et le Prince de sang-mêlé", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h33" },
+      { id: 322, titre: "Harry Potter et les Reliques de la Mort 1", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h26" },
+      { id: 323, titre: "Harry Potter et les Reliques de la Mort 2", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h10" },
+      { id: 324, titre: "Indiana Jones et les Aventuriers de l'arche perdue", genre: "Action", plateforme: "Disney+", type: "Film", duree: "1h55" },
+      { id: 325, titre: "Indiana Jones et le Temple maudit", genre: "Action", plateforme: "Disney+", type: "Film", duree: "1h58" },
+      { id: 326, titre: "Indiana Jones et la Dernière Croisade", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h07" },
+      { id: 327, titre: "Pirates des Caraïbes : La Malédiction du Black Pearl", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h23" },
+      { id: 328, titre: "Pirates des Caraïbes : Le Secret du coffre maudit", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h31" },
+      { id: 329, titre: "Pirates des Caraïbes : Jusqu'au bout du monde", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h49" },
+      { id: 330, titre: "Le Labyrinthe de Pan", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Film", duree: "1h58" },
+      { id: 331, titre: "La Forme de l'eau", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h03" },
+      { id: 332, titre: "Blade Runner", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "1h57" },
+      { id: 333, titre: "Blade Runner 2049", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h44" },
+      { id: 334, titre: "Mad Max", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h28" },
+      { id: 335, titre: "Mad Max 2 : Le Défi", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h35" },
+      { id: 336, titre: "Gladiator", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h35" },
+      { id: 337, titre: "Braveheart", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h58" },
+      { id: 338, titre: "Le Dernier Samouraï", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h34" },
+      { id: 339, titre: "Troie", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h42" },
+      { id: 340, titre: "300", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h57" },
+
+      // BLOCK 2 : THRILLERS ET POLICIERS
+      { id: 341, titre: "Zodiac", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h37" },
+      { id: 342, titre: "Prisoners", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h33" },
+      { id: 343, titre: "Gone Girl", genre: "Thriller / Horreur", plateforme: "Disney+", type: "Film", duree: "2h29" },
+      { id: 344, titre: "Le Silence des Agneaux", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "1h58" },
+      { id: 345, titre: "Shining", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h26" },
+      { id: 346, titre: "Sixième Sens", genre: "Thriller / Horreur", plateforme: "Disney+", type: "Film", duree: "1h47" },
+      { id: 347, titre: "Incassable", genre: "Thriller / Horreur", plateforme: "Disney+", type: "Film", duree: "1h46" },
+      { id: 348, titre: "Split", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Film", duree: "1h57" },
+      { id: 349, titre: "Get Out", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "1h44" },
+      { id: 350, titre: "Us", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "1h56" },
+      { id: 351, titre: "Nope", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Film", duree: "2h10" },
+      { id: 352, titre: "Hérédité", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h07" },
+      { id: 353, titre: "Midsommar", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h27" },
+      { id: 354, titre: "Conjuring : Les Dossiers Warren", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Film", duree: "1h52" },
+      { id: 355, titre: "Conjuring 2 : Le Cas Enfield", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Film", duree: "2h14" },
+      { id: 356, titre: "Annabelle", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Film", duree: "1h39" },
+      { id: 357, titre: "Ça", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h15" },
+      { id: 358, titre: "Black Swan", genre: "Drame", plateforme: "Disney+", type: "Film", duree: "1h48" },
+      { id: 359, titre: "Night Call", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "1h57" },
+      { id: 360, titre: "Drive", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h40" },
+
+      // BLOCK 3 : SÉRIES (Drames & Comédies)
+      { id: 361, titre: "Les Soprano", genre: "Drame", plateforme: "Prime", type: "Série", duree: "50min/ép" },
+      { id: 362, titre: "The Wire (Sur écoute)", genre: "Drame", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 363, titre: "Succession", genre: "Drame", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 364, titre: "Chernobyl", genre: "Drame", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 365, titre: "True Detective", genre: "Thriller / Horreur", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 366, titre: "Fargo", genre: "Thriller / Horreur", plateforme: "Prime", type: "Série", duree: "50min/ép" },
+      { id: 367, titre: "Peacemaker", genre: "Action", plateforme: "Prime", type: "Série", duree: "45min/ép" },
+      { id: 368, titre: "The White Lotus", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 369, titre: "Barry", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "30min/ép" },
+      { id: 370, titre: "Silicon Valley", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "30min/ép" },
+      { id: 371, titre: "Veep", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "30min/ép" },
+      { id: 372, titre: "Curb Your Enthusiasm", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "30min/ép" },
+      { id: 373, titre: "Banshee", genre: "Action", plateforme: "Prime", type: "Série", duree: "50min/ép" },
+      { id: 374, titre: "The Leftovers", genre: "Drame", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 375, titre: "Westworld", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 376, titre: "House of the Dragon", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 377, titre: "The Last of Us", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 378, titre: "Euphoria", genre: "Drame", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 379, titre: "Big Little Lies", genre: "Drame", plateforme: "Prime", type: "Série", duree: "50min/ép" },
+      { id: 380, titre: "Mare of Easttown", genre: "Drame", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+
+      // BLOCK 4 : ANIMES ET MANGAS (Séries & Films)
+      { id: 381, titre: "L'Attaque des Titans", genre: "Animation", plateforme: "Prime", type: "Série", duree: "24min/ép" },
+      { id: 382, titre: "Demon Slayer", genre: "Animation", plateforme: "Prime", type: "Série", duree: "24min/ép" },
+      { id: 383, titre: "Jujutsu Kaisen", genre: "Animation", plateforme: "Prime", type: "Série", duree: "24min/ép" },
+      { id: 384, titre: "One Punch Man", genre: "Animation", plateforme: "Prime", type: "Série", duree: "24min/ép" },
+      { id: 385, titre: "My Hero Academia", genre: "Animation", plateforme: "Prime", type: "Série", duree: "24min/ép" },
+      { id: 386, titre: "Hunter x Hunter", genre: "Animation", plateforme: "Prime", type: "Série", duree: "24min/ép" },
+      { id: 387, titre: "Naruto", genre: "Animation", plateforme: "Prime", type: "Série", duree: "24min/ép" },
+      { id: 388, titre: "Naruto Shippuden", genre: "Animation", plateforme: "Prime", type: "Série", duree: "24min/ép" },
+      { id: 389, titre: "One Piece", genre: "Animation", plateforme: "Netflix", type: "Série", duree: "24min/ép" },
+      { id: 390, titre: "One Piece (Live Action)", genre: "Action", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 391, titre: "Death Note", genre: "Animation", plateforme: "Netflix", type: "Série", duree: "24min/ép" },
+      { id: 392, titre: "Fullmetal Alchemist: Brotherhood", genre: "Animation", plateforme: "Prime", type: "Série", duree: "24min/ép" },
+      { id: 393, titre: "Steins;Gate", genre: "Animation", plateforme: "Prime", type: "Série", duree: "24min/ép" },
+      { id: 394, titre: "Cowboy Bebop", genre: "Animation", plateforme: "Netflix", type: "Série", duree: "24min/ép" },
+      { id: 395, titre: "Neon Genesis Evangelion", genre: "Animation", plateforme: "Netflix", type: "Série", duree: "24min/ép" },
+      { id: 396, titre: "Your Name", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h46" },
+      { id: 397, titre: "Les Enfants du Temps", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h52" },
+      { id: 398, titre: "Suzume", genre: "Animation", plateforme: "Prime", type: "Film", duree: "2h02" },
+      { id: 399, titre: "Akira", genre: "Animation", plateforme: "Prime", type: "Film", duree: "2h04" },
+      { id: 400, titre: "Ghost in the Shell", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h23" },
+
+      // BLOCK 5 : CINÉMA FRANÇAIS ET COMÉDIES
+      { id: 401, titre: "La Haine", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "1h38" },
+      { id: 402, titre: "Le Fabuleux Destin d'Amélie Poulain", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h02" },
+      { id: 403, titre: "Les Visiteurs", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h47" },
+      { id: 404, titre: "Le Dîner de Cons", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h22" },
+      { id: 405, titre: "La Grande Vadrouille", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "2h12" },
+      { id: 406, titre: "Les Tontons Flingueurs", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h45" },
+      { id: 407, titre: "Astérix et Obélix contre César", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h49" },
+      { id: 408, titre: "Taxi", genre: "Action", plateforme: "Netflix", type: "Film", duree: "1h26" },
+      { id: 409, titre: "Taxi 2", genre: "Action", plateforme: "Netflix", type: "Film", duree: "1h28" },
+      { id: 410, titre: "Taxi 3", genre: "Action", plateforme: "Netflix", type: "Film", duree: "1h27" },
+      { id: 411, titre: "Bienvenue chez les Ch'tis", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h46" },
+      { id: 412, titre: "Intouchables", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h52" },
+      { id: 413, titre: "Le Prénom", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h49" },
+      { id: 414, titre: "Nos jours heureux", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h43" },
+      { id: 415, titre: "La Cité de la Peur", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h39" },
+      { id: 416, titre: "RRRrrrr!!!", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h38" },
+      { id: 417, titre: "Polisse", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h07" },
+      { id: 418, titre: "Un prophète", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h35" },
+      { id: 419, titre: "Les Misérables", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "1h44" },
+      { id: 420, titre: "BAC Nord", genre: "Action", plateforme: "Netflix", type: "Film", duree: "1h45" },
+      { id: 421, titre: "Boîte Noire", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Film", duree: "2h09" },
+      { id: 422, titre: "Le Chant du Loup", genre: "Action", plateforme: "Netflix", type: "Film", duree: "1h55" },
+      { id: 423, titre: "Anatomie d'une chute", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "2h31" },
+      { id: 424, titre: "Grave", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "1h39" },
+      { id: 425, titre: "Titane", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "1h48" },
+
+      // BLOCK 6 : CHEFS-D'ŒUVRE MARVEL ET DC
+      { id: 426, titre: "The Dark Knight : Le Chevalier Noir", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h32" },
+      { id: 427, titre: "The Dark Knight Rises", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h44" },
+      { id: 428, titre: "Batman Begins", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h20" },
+      { id: 429, titre: "Joker", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h02" },
+      { id: 430, titre: "Spider-Man", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h01" },
+      { id: 431, titre: "Spider-Man 2", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h07" },
+      { id: 432, titre: "Spider-Man : No Way Home", genre: "Action", plateforme: "Canal+", type: "Film", duree: "2h28" },
+      { id: 433, titre: "Black Panther", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h14" },
+      { id: 434, titre: "Thor: Ragnarok", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h10" },
+      { id: 435, titre: "Captain America: Civil War", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h27" },
+      { id: 436, titre: "Doctor Strange", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "1h55" },
+      { id: 437, titre: "Les Indestructibles 2", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h58" },
+      { id: 438, titre: "Zootopie", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h48" },
+      { id: 439, titre: "Vaiana : La Légende du bout du monde", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h47" },
+      { id: 440, titre: "La Reine des Neiges", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h42" },
+      { id: 441, titre: "Encanto", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h42" },
+      { id: 442, titre: "Le Monde de Dory", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h37" },
+      { id: 443, titre: "Soul", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h40" },
+      { id: 444, titre: "Vice-Versa 2", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h36" },
+      { id: 445, titre: "Deadpool 2", genre: "Comédie", plateforme: "Disney+", type: "Film", duree: "1h59" },
+
+      // BLOCK 7 : GRANDES COMÉDIES US & ROM-COMS
+      { id: 446, titre: "Crazy, Stupid, Love.", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h58" },
+      { id: 447, titre: "Love Actually", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h15" },
+      { id: 448, titre: "Coup de foudre à Notting Hill", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h04" },
+      { id: 449, titre: "Bridget Jones", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h37" },
+      { id: 450, titre: "Quand Harry rencontre Sally", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h36" },
+      { id: 451, titre: "SuperGrave (Superbad)", genre: "Comédie", plateforme: "Netflix", type: "Film", duree: "1h53" },
+      { id: 452, titre: "Frangins malgré eux (Step Brothers)", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h38" },
+      { id: 453, titre: "Very Bad Cops (The Other Guys)", genre: "Comédie", plateforme: "Netflix", type: "Film", duree: "1h47" },
+      { id: 454, titre: "21 Jump Street", genre: "Comédie", plateforme: "Netflix", type: "Film", duree: "1h49" },
+      { id: 455, titre: "22 Jump Street", genre: "Comédie", plateforme: "Netflix", type: "Film", duree: "1h52" },
+      { id: 456, titre: "Scott Pilgrim", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h52" },
+      { id: 457, titre: "Shaun of the Dead", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h39" },
+      { id: 458, titre: "Hot Fuzz", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h01" },
+      { id: 459, titre: "Le Dernier Pub avant la fin du monde", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h49" },
+      { id: 460, titre: "Ted", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h46" },
+
+      // BLOCK 8 : ÉNORMES BLOCKBUSTERS D'ACTION
+      { id: 461, titre: "Fast & Furious", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h46" },
+      { id: 462, titre: "Fast & Furious 5", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h10" },
+      { id: 463, titre: "Fast & Furious 7", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h17" },
+      { id: 464, titre: "Mission: Impossible - Protocole Fantôme", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h12" },
+      { id: 465, titre: "Mission: Impossible - Rogue Nation", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h11" },
+      { id: 466, titre: "Mission: Impossible - Fallout", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h27" },
+      { id: 467, titre: "Kingsman : Services secrets", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h09" },
+      { id: 468, titre: "Kingsman : Le Cercle d'or", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h21" },
+      { id: 469, titre: "Jason Bourne", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h59" },
+      { id: 470, titre: "La Vengeance dans la peau", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h55" },
+      { id: 471, titre: "L'Arme Fatale", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h49" },
+      { id: 472, titre: "L'Arme Fatale 2", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h54" },
+      { id: 473, titre: "Piège de Cristal (Die Hard)", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h12" },
+      { id: 474, titre: "Une Journée en Enfer (Die Hard 3)", genre: "Action", plateforme: "Disney+", type: "Film", duree: "2h08" },
+      { id: 475, titre: "Léon", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h13" },
+      { id: 476, titre: "Kill Bill: Vol. 1", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h51" },
+      { id: 477, titre: "Kill Bill: Vol. 2", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h17" },
+      { id: 478, titre: "Snatch", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h44" },
+      { id: 479, titre: "Arnaques, Crimes et Botanique", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h47" },
+      { id: 480, titre: "Baby Driver", genre: "Action", plateforme: "Netflix", type: "Film", duree: "1h53" },
+
+      // BLOCK 9 : APPLE TV+ ET CRÉATIONS CANAL
+      { id: 481, titre: "Severance", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 482, titre: "Ted Lasso", genre: "Comédie", plateforme: "Canal+", type: "Série", duree: "35min/ép" },
+      { id: 483, titre: "The Morning Show", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "1h/ép" },
+      { id: 484, titre: "Silo", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 485, titre: "Foundation", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Série", duree: "1h/ép" },
+      { id: 486, titre: "For All Mankind", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Série", duree: "1h/ép" },
+      { id: 487, titre: "Slow Horses", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Série", duree: "45min/ép" },
+      { id: 488, titre: "Pachinko", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "55min/ép" },
+      { id: 489, titre: "Shrinking", genre: "Comédie", plateforme: "Canal+", type: "Série", duree: "35min/ép" },
+      { id: 490, titre: "Black Bird", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Série", duree: "1h/ép" },
+      { id: 491, titre: "Engrenages", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Série", duree: "55min/ép" },
+      { id: 492, titre: "Le Bureau des Légendes", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 493, titre: "Hippocrate", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 494, titre: "Baron Noir", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "55min/ép" },
+      { id: 495, titre: "Validé", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "35min/ép" },
+      { id: 496, titre: "D'Argent et de Sang", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 497, titre: "La Flamme", genre: "Comédie", plateforme: "Canal+", type: "Série", duree: "30min/ép" },
+      { id: 498, titre: "Le Flambeau", genre: "Comédie", plateforme: "Canal+", type: "Série", duree: "30min/ép" },
+      { id: 499, titre: "B.R.I", genre: "Action", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
+      { id: 500, titre: "Gangs of London", genre: "Action", plateforme: "Canal+", type: "Série", duree: "1h/ép" },
+
+      // BLOCK 10 : DOCUMENTAIRES (Nature, Sport, Crimes)
+      { id: 501, titre: "Notre Planète", genre: "Documentaire", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 502, titre: "Planète Terre II", genre: "Documentaire", plateforme: "Prime", type: "Série", duree: "50min/ép" },
+      { id: 503, titre: "La Sagesse de la Pieuvre", genre: "Documentaire", plateforme: "Netflix", type: "Film", duree: "1h25" },
+      { id: 504, titre: "Formula 1 : Pilotes de leur destin", genre: "Documentaire", plateforme: "Netflix", type: "Série", duree: "45min/ép" },
+      { id: 505, titre: "The Last Dance", genre: "Documentaire", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 506, titre: "Making a Murderer", genre: "Documentaire", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 507, titre: "Tiger King", genre: "Documentaire", plateforme: "Netflix", type: "Série", duree: "45min/ép" },
+      { id: 508, titre: "Orelsan : Montre jamais ça à personne", genre: "Documentaire", plateforme: "Prime", type: "Série", duree: "40min/ép" },
+      { id: 509, titre: "Clarkson à la ferme", genre: "Documentaire", plateforme: "Prime", type: "Série", duree: "45min/ép" },
+      { id: 510, titre: "The Grand Tour", genre: "Documentaire", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 511, titre: "L'Arnaqueur de Tinder", genre: "Documentaire", plateforme: "Netflix", type: "Film", duree: "1h54" },
+      { id: 512, titre: "Free Solo", genre: "Documentaire", plateforme: "Disney+", type: "Film", duree: "1h40" },
+      { id: 513, titre: "The Beatles: Get Back", genre: "Documentaire", plateforme: "Disney+", type: "Série", duree: "2h/ép" },
+      { id: 514, titre: "La Panthère des Neiges", genre: "Documentaire", plateforme: "Canal+", type: "Film", duree: "1h32" },
+      { id: 515, titre: "Super Size Me", genre: "Documentaire", plateforme: "Prime", type: "Film", duree: "1h40" },
+
+      // BLOCK 11 : K-DRAMAS ET INTERNATIONAL
+      { id: 516, titre: "Squid Game", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 517, titre: "Alice in Borderland", genre: "Action", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
+      { id: 518, titre: "Crash Landing on You", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "1h20/ép" },
+      { id: 519, titre: "Itaewon Class", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "1h10/ép" },
+      { id: 520, titre: "La Casa de Papel", genre: "Action", plateforme: "Netflix", type: "Série", duree: "45min/ép" },
+      { id: 521, titre: "Lupin", genre: "Action", plateforme: "Netflix", type: "Série", duree: "45min/ép" },
+      { id: 522, titre: "Dark", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 523, titre: "Parasite", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Film", duree: "2h12" },
+      { id: 524, titre: "Dernier train pour Busan", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "1h58" },
+      { id: 525, titre: "Old Boy", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h00" },
+
+      // BLOCK 12 : SCIENCE-FICTION & FANTASTIQUE CLASSIQUES
+      { id: 526, titre: "Alien, le huitième passager", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "1h57" },
+      { id: 527, titre: "Aliens le retour", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h17" },
+      { id: 528, titre: "Predator", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "1h47" },
+      { id: 529, titre: "Terminator", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "1h47" },
+      { id: 530, titre: "Terminator 2: Le Jugement Dernier", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h17" },
+      { id: 531, titre: "Matrix", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h16" },
+      { id: 532, titre: "Inception", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Film", duree: "2h28" },
+      { id: 533, titre: "Interstellar", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h49" },
+      { id: 534, titre: "Dune: Deuxième Partie", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Film", duree: "2h46" },
+      { id: 535, titre: "Avatar", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h42" },
+      { id: 536, titre: "Avatar : La Voie de l'eau", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "3h12" },
+      { id: 537, titre: "Star Wars : Un Nouvel Espoir", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h01" },
+      { id: 538, titre: "Star Wars : L'Empire Contre-Attaque", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h04" },
+      { id: 539, titre: "Star Wars : Le Retour du Jedi", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h11" },
+      { id: 540, titre: "Star Wars : La Revanche des Sith", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h20" },
+
+      // BLOCK 13 : SÉRIES COMFORT & CULTES
+      { id: 541, titre: "Friends", genre: "Comédie", plateforme: "Netflix", type: "Série", duree: "22min/ép" },
+      { id: 542, titre: "The Office (US)", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "22min/ép" },
+      { id: 543, titre: "Parks and Recreation", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "22min/ép" },
+      { id: 544, titre: "Brooklyn Nine-Nine", genre: "Comédie", plateforme: "Netflix", type: "Série", duree: "22min/ép" },
+      { id: 545, titre: "How I Met Your Mother", genre: "Comédie", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
+      { id: 546, titre: "Scrubs", genre: "Comédie", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
+      { id: 547, titre: "Malcolm", genre: "Comédie", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
+      { id: 548, titre: "Kaamelott", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "7min/ép" },
+      { id: 549, titre: "Un gars, une fille", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "6min/ép" },
+      { id: 550, titre: "Modern Family", genre: "Comédie", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
+
+      // BLOCK 14 : NOUVEAUTÉS ET TENDANCES 2023-2024
+      { id: 551, titre: "Oppenheimer", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "3h00" },
+      { id: 552, titre: "Barbie", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h54" },
+      { id: 553, titre: "Killers of the Flower Moon", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "3h26" },
+      { id: 554, titre: "Pauvres Créatures", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h21" },
+      { id: 555, titre: "Anatomie d'une chute", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "2h31" },
+      { id: 556, titre: "Le Règne Animal", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Film", duree: "2h08" },
+      { id: 557, titre: "Spider-Man : Across the Spider-Verse", genre: "Animation", plateforme: "Canal+", type: "Film", duree: "2h20" },
+      { id: 558, titre: "Super Mario Bros. le film", genre: "Animation", plateforme: "Canal+", type: "Film", duree: "1h32" },
+      { id: 559, titre: "Le Garçon et le Héron", genre: "Animation", plateforme: "Canal+", type: "Film", duree: "2h04" },
+      { id: 560, titre: "Godzilla Minus One", genre: "Action", plateforme: "Netflix", type: "Film", duree: "2h04" },
+
+      // BLOCK 15 : CHEFS D'OEUVRES GLOBAUX POUR FINIR EN BEAUTÉ
+      { id: 561, titre: "Le Parrain", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h55" },
+      { id: 562, titre: "Le Parrain, 2ème partie", genre: "Drame", plateforme: "Prime", type: "Film", duree: "3h22" },
+      { id: 563, titre: "Les Affranchis", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h25" },
+      { id: 564, titre: "Pulp Fiction", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h34" },
+      { id: 565, titre: "Django Unchained", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h45" },
+      { id: 566, titre: "Inglourious Basterds", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h33" },
+      { id: 567, titre: "Fight Club", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h19" },
+      { id: 568, titre: "Forrest Gump", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h22" },
+      { id: 569, titre: "La Ligne Verte", genre: "Drame", plateforme: "Prime", type: "Film", duree: "3h09" },
+      { id: 570, titre: "Les Évadés", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h22" },
+      { id: 571, titre: "Il faut sauver le soldat Ryan", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h49" },
+      { id: 572, titre: "Le Loup de Wall Street", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "3h00" },
+      { id: 573, titre: "Arrête-moi si tu peux", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h21" },
+      { id: 574, titre: "Le Truman Show", genre: "Drame", plateforme: "Prime", type: "Film", duree: "1h43" },
+      { id: 575, titre: "Le Cercle des Poètes Disparus", genre: "Drame", plateforme: "Disney+", type: "Film", duree: "2h08" },
+      { id: 576, titre: "Will Hunting", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h06" },
+      { id: 577, titre: "Gladiator", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h35" },
+      { id: 578, titre: "Le Seigneur des Anneaux : La Communauté de l'Anneau", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h58" },
+      { id: 579, titre: "Le Seigneur des Anneaux : Les Deux Tours", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h59" },
+      { id: 580, titre: "Le Seigneur des Anneaux : Le Retour du Roi", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "3h21" },
+      { id: 581, titre: "Shrek", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h30" },
+      { id: 582, titre: "Shrek 2", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h33" },
+      { id: 583, titre: "Le Voyage de Chihiro", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "2h05" },
+      { id: 584, titre: "Princesse Mononoké", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "2h14" },
+      { id: 585, titre: "Le Château ambulant", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "1h59" },
+      { id: 586, titre: "Mon voisin Totoro", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "1h26" },
+      { id: 587, titre: "Jurassic Park", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h07" },
+      { id: 588, titre: "Retour vers le futur", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "1h56" },
+      { id: 589, titre: "Retour vers le futur II", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "1h48" },
+      { id: 590, titre: "Retour vers le futur III", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "1h58" },
+      { id: 591, titre: "E.T. l'extra-terrestre", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "1h55" },
+      { id: 592, titre: "Les Dents de la Mer", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h04" },
+      { id: 593, titre: "The Big Lebowski", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h57" },
+      { id: 594, titre: "Fargo", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "1h38" },
+      { id: 595, titre: "No Country for Old Men", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h02" },
+      { id: 596, titre: "Requiem for a Dream", genre: "Drame", plateforme: "Prime", type: "Film", duree: "1h42" },
+      { id: 597, titre: "Black Mirror", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
+      { id: 598, titre: "The Boys", genre: "Action", plateforme: "Prime", type: "Série", duree: "1h/ép" },
+      { id: 599, titre: "Invincible", genre: "Animation", plateforme: "Prime", type: "Série", duree: "45min/ép" },
+      { id: 600, titre: "Arcane", genre: "Animation", plateforme: "Netflix", type: "Série", duree: "40min/ép" }
+    ];
+
+    // --- VARIABLES D'ÉTAT ---
+    // Sauvegarde des films marqués comme "déjà vus" dans le téléphone
+    let seenIds = JSON.parse(localStorage.getItem('cinerandom_seen')) || [];
+    
+    // État des filtres : quels boutons sont cochés ?
+    let activeFilters = {
+      type: ['Film'], // Par défaut, on cherche un film
+      plateforme: ['Netflix', 'Prime', 'Disney+', 'Canal+'], // Toutes les plateformes activées
+      genre: ['Comédie', 'Action', 'Sci-Fi / Fantasy', 'Thriller / Horreur', 'Drame', 'Animation'] // Tous les genres
+    };
+
+    let showSeenInCatalogue = false; // Onglet catalogue: afficher "À voir" ou "Déjà vus"
+    let currentWinnerId = null;
+    let rouletteInterval = null;
+
+    // --- STREAMING_CHUNK: Logique de la Roulette ---
+    
+    // Obtenir la liste des œuvres qui correspondent aux filtres ET qui n'ont pas été vues
+    function getFilteredList() {
+      return database.filter(item => {
+        const isNotSeen = !seenIds.includes(item.id);
+        const matchesType = activeFilters.type.includes(item.type);
+        const matchesPlat = activeFilters.plateforme.includes(item.plateforme);
+        const matchesGenre = activeFilters.genre.includes(item.genre);
+        return isNotSeen && matchesType && matchesPlat && matchesGenre;
+      });
+    }
+
+    function startRoulette() {
+      const candidates = getFilteredList();
+      const errorDiv = document.getElementById('error-message');
+      const btnDraw = document.getElementById('btn-draw');
+      
+      // Si aucun film ne correspond, on affiche une erreur
+      if (candidates.length === 0) {
+        errorDiv.classList.remove('hidden');
+        setTimeout(() => errorDiv.classList.add('hidden'), 4000); // Disparaît après 4s
+        return;
+      }
+      
+      errorDiv.classList.add('hidden');
+      
+      // Préparation de l'interface
+      document.getElementById('default-screen').classList.add('hidden');
+      document.getElementById('winner-screen').classList.add('hidden');
+      const rouletteScreen = document.getElementById('roulette-screen');
+      const rouletteText = document.getElementById('roulette-text');
+      rouletteScreen.classList.remove('hidden');
+      rouletteScreen.classList.add('flex', 'flex-col', 'items-center', 'justify-center');
+      
+      // Désactiver le bouton pendant le tirage
+      btnDraw.disabled = true;
+      btnDraw.classList.add('opacity-50', 'cursor-not-allowed');
+      btnDraw.innerHTML = '🎰 Tirage en cours...';
+
+      // L'effet Roulette (change de texte toutes les 80 millisecondes)
+      let ticks = 0;
+      const maxTicks = 35; // Durée du tirage (35 * 80ms = ~2.8 secondes)
+      
+      rouletteInterval = setInterval(() => {
+        // Piocher un titre au hasard juste pour l'animation
+        const randomItem = candidates[Math.floor(Math.random() * candidates.length)];
+        rouletteText.innerText = randomItem.titre;
+        ticks++;
+
+        // Quand l'animation est finie
+        if (ticks >= maxTicks) {
+          clearInterval(rouletteInterval);
+          
+          // Piocher le VRAI grand gagnant
+          const finalWinner = candidates[Math.floor(Math.random() * candidates.length)];
+          showWinner(finalWinner);
+          
+          // Réactiver le bouton
+          btnDraw.disabled = false;
+          btnDraw.classList.remove('opacity-50', 'cursor-not-allowed');
+          btnDraw.innerHTML = '<span class="text-2xl">🔄</span> Relancer un tirage';
+        }
+      }, 80);
+    }
+
+    function showWinner(winner) {
+      currentWinnerId = winner.id;
+      document.getElementById('roulette-screen').classList.add('hidden');
+      document.getElementById('roulette-screen').classList.remove('flex');
+      
+      const winnerScreen = document.getElementById('winner-screen');
+      winnerScreen.classList.remove('hidden');
+      winnerScreen.classList.add('flex');
+      
+      document.getElementById('winner-title').innerText = winner.titre;
+      
+      // Créer les petits badges (Plateforme, Genre, Durée)
+      const badgesContainer = document.getElementById('winner-badges');
+      badgesContainer.innerHTML = `
+        <span class="bg-slate-700 text-slate-200 border border-slate-600 px-3 py-1 rounded-lg text-xs font-bold">${getPlatEmoji(winner.plateforme)} ${winner.plateforme}</span>
+        <span class="bg-slate-700 text-slate-200 border border-slate-600 px-3 py-1 rounded-lg text-xs font-bold">${winner.genre}</span>
+        <span class="bg-slate-700 text-slate-200 border border-slate-600 px-3 py-1 rounded-lg text-xs font-bold">⏱️ ${winner.duree}</span>
+      `;
+    }
+
+    function markWinnerAsSeen() {
+      if (currentWinnerId && !seenIds.includes(currentWinnerId)) {
+        seenIds.push(currentWinnerId);
+        localStorage.setItem('cinerandom_seen', JSON.stringify(seenIds));
+        
+        // Petite animation de validation
+        const btn = document.querySelector('#winner-screen button');
+        const originalText = btn.innerText;
+        btn.innerText = "✅ Enregistré !";
+        btn.classList.add('text-green-400');
+        
+        // Mettre à jour le catalogue en arrière-plan
+        renderCatalogue();
+        
+        setTimeout(() => {
+          btn.innerText = originalText;
+          btn.classList.remove('text-green-400');
+          // On cache le gagnant et on remet l'écran par défaut
+          document.getElementById('winner-screen').classList.add('hidden');
+          document.getElementById('winner-screen').classList.remove('flex');
+          document.getElementById('default-screen').classList.remove('hidden');
+          document.getElementById('btn-draw').innerHTML = '<span class="text-2xl">🎰</span> Lancer le tirage !';
+        }, 1500);
+      }
+    }
+
+    // --- STREAMING_CHUNK: Logique des Filtres ---
+    function toggleFilter(group, value) {
+      const index = activeFilters[group].indexOf(value);
+      if (index > -1) {
+        // Si c'est coché, on décoche
+        activeFilters[group].splice(index, 1);
+      } else {
+        // Si c'est décoché, on coche
+        activeFilters[group].push(value);
+      }
+      updateFilterButtonsUI();
+    }
+
+    function updateFilterButtonsUI() {
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        const group = btn.dataset.group;
+        const val = btn.dataset.val;
+        const isActive = activeFilters[group].includes(val);
+        
+        // Base classes fixes pour la taille selon le groupe
+        const baseClasses = group === 'genre' ? 'px-3 py-1.5 rounded-lg text-xs' : 'px-4 py-2 rounded-xl text-sm';
+        
+        if (isActive) {
+          // Styles TRES visibles pour les éléments actifs (Couleur pleine + effet néon + bordure)
+          btn.classList.add('active-filter');
+          if(group === 'type' || group === 'genre') {
+            btn.className = `filter-btn active-filter bg-appPrimary text-white font-bold border-2 border-appPrimary shadow-[0_0_10px_rgba(225,29,72,0.5)] transition ${baseClasses}`;
+          } else if (group === 'plateforme') {
+            if(val==='Netflix') btn.className = `filter-btn active-filter bg-red-600 text-white font-bold border-2 border-red-500 shadow-[0_0_10px_rgba(220,38,38,0.5)] transition ${baseClasses}`;
+            if(val==='Prime') btn.className = `filter-btn active-filter bg-blue-600 text-white font-bold border-2 border-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.5)] transition ${baseClasses}`;
+            if(val==='Disney+') btn.className = `filter-btn active-filter bg-indigo-600 text-white font-bold border-2 border-indigo-500 shadow-[0_0_10px_rgba(79,70,229,0.5)] transition ${baseClasses}`;
+            if(val==='Canal+') btn.className = `filter-btn active-filter bg-slate-900 text-white font-bold border-2 border-slate-400 shadow-[0_0_10px_rgba(148,163,184,0.5)] transition ${baseClasses}`;
+          }
+        } else {
+          // Styles inactifs (grisés, semi-transparents, texte discret)
+          btn.classList.remove('active-filter');
+          btn.className = `filter-btn bg-slate-800 text-slate-500 border border-slate-700 opacity-40 hover:opacity-80 font-medium transition ${baseClasses}`;
+        }
+        
+        // Réattribuer les datasets car on a écrasé className
+        btn.dataset.group = group;
+        btn.dataset.val = val;
+      });
+    }
+
+    function resetFilters() {
+      activeFilters = {
+        type: ['Film', 'Série', 'Documentaire'],
+        plateforme: ['Netflix', 'Prime', 'Disney+', 'Canal+'],
+        genre: ['Comédie', 'Action', 'Sci-Fi / Fantasy', 'Thriller / Horreur', 'Drame', 'Animation']
+      };
+      updateFilterButtonsUI();
+    }
+
+    // --- STREAMING_CHUNK: Logique du Catalogue ---
+    function filterSeen(showSeen) {
+      showSeenInCatalogue = showSeen;
+      document.getElementById('btn-seen-false').className = !showSeen ? "text-appPrimary underline" : "text-slate-500 hover:text-slate-300";
+      document.getElementById('btn-seen-true').className = showSeen ? "text-appPrimary underline" : "text-slate-500 hover:text-slate-300";
+      renderCatalogue();
+    }
+
+    function toggleSeenStatus(id) {
+      const index = seenIds.indexOf(id);
+      if (index > -1) {
+        seenIds.splice(index, 1); // Retirer des vus
+      } else {
+        seenIds.push(id); // Ajouter aux vus
+      }
+      localStorage.setItem('cinerandom_seen', JSON.stringify(seenIds));
+      renderCatalogue();
+    }
+
+    function renderCatalogue() {
+      const grid = document.getElementById('catalogue-grid');
+      grid.innerHTML = '';
+      
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+      
+      const itemsToDisplay = database.filter(item => {
+        const isSeen = seenIds.includes(item.id);
+        // On affiche soit les non-vus, soit les vus selon l'onglet
+        const matchesSeenStatus = showSeenInCatalogue ? isSeen : !isSeen;
+        const matchesSearch = !query || item.titre.toLowerCase().includes(query);
+        return matchesSeenStatus && matchesSearch;
+      });
+
+      document.getElementById('catalogue-count').innerText = itemsToDisplay.length;
+
+      if (itemsToDisplay.length === 0) {
+        grid.innerHTML = `<div class="col-span-full py-10 text-center text-slate-500 italic">Aucune œuvre trouvée dans cette liste.</div>`;
+        return;
+      }
+
+      itemsToDisplay.forEach(item => {
+        const isSeen = seenIds.includes(item.id);
+        const card = document.createElement('div');
+        card.className = "bg-appCard border border-slate-700 rounded-2xl p-4 flex flex-col justify-between h-full";
+        
+        card.innerHTML = `
+          <div>
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-md">${item.type}</span>
+              <button onclick="toggleSeenStatus(${item.id})" class="text-xs flex items-center gap-1 ${isSeen ? 'text-appPrimary hover:text-appPrimaryHover' : 'text-slate-500 hover:text-slate-300'} transition font-bold">
+                ${isSeen ? '✅ Marqué Vu' : '👁️ Marquer Vu'}
+              </button>
+            </div>
+            <h4 class="font-bold text-lg text-white leading-tight mb-2">${item.titre}</h4>
+          </div>
+          <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-700/50 text-xs font-semibold text-slate-300">
+            <span>${getPlatEmoji(item.plateforme)} ${item.plateforme}</span>
+            <span class="text-slate-600">•</span>
+            <span>${item.genre}</span>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // Petit utilitaire pour mettre un emoji sympa selon la plateforme
+    function getPlatEmoji(plat) {
+      if(plat === 'Netflix') return '🔴';
+      if(plat === 'Prime') return '🔵';
+      if(plat === 'Disney+') return '✨';
+      if(plat === 'Canal+') return '➕';
+      return '📺';
+    }
+
+    // --- LOGIQUE DE NAVIGATION (ONGLETS) ---
+    function switchTab(tabId) {
+      // Gérer le style des onglets
+      document.querySelectorAll('.nav-tab').forEach(t => {
+        t.classList.remove('text-appPrimary', 'border-appPrimary');
+        t.classList.add('text-appMuted', 'border-transparent');
+      });
+      const activeTab = document.getElementById(`tab-${tabId}`);
+      activeTab.classList.remove('text-appMuted', 'border-transparent');
+      activeTab.classList.add('text-appPrimary', 'border-appPrimary');
+      
+      // Afficher/Cacher les sections
+      document.getElementById('sec-generator').classList.add('hidden');
+      document.getElementById('sec-catalogue').classList.add('hidden');
+      
+      // On retire le "hidden" et on s'assure que c'est un flex container
+      document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+      document.getElementById(`sec-${tabId}`).classList.add('flex');
+    }
+
+    // Initialisation au chargement de la page
+    window.addEventListener('DOMContentLoaded', () => {
+      updateFilterButtonsUI(); // Met les couleurs sur les filtres par défaut
+      renderCatalogue(); // Charge la liste
+    });
+  </script>
+</body>
+</html>
