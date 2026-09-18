@@ -12,9 +12,9 @@
           colors: {
             appBg: '#0F172A',
             appCard: '#1E293B',
-            appPrimary: '#E11D48', // Un rouge "cinéma"
+            appPrimary: '#E11D48', // Rouge cinéma
             appPrimaryHover: '#BE123C',
-            appAccent: '#F59E0B', // Or "Popcorn"
+            appAccent: '#F59E0B', // Or Popcorn
             appText: '#F8FAFC',
             appMuted: '#64748B'
           },
@@ -29,14 +29,28 @@
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    
-    /* Effet néon pour le résultat gagnant */
-    .neon-text {
-      text-shadow: 0 0 10px rgba(225, 29, 72, 0.7), 0 0 20px rgba(225, 29, 72, 0.5);
-    }
+    .neon-text { text-shadow: 0 0 10px rgba(225, 29, 72, 0.7), 0 0 20px rgba(225, 29, 72, 0.5); }
   </style>
 </head>
-<body class="h-full flex flex-col antialiased selection:bg-appPrimary selection:text-white">
+<body class="h-full flex flex-col antialiased selection:bg-appPrimary selection:text-white overflow-hidden" id="body-container">
+
+  <!-- ÉCRAN DE CONNEXION -->
+  <div id="login-screen" class="fixed inset-0 z-[100] bg-appBg/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 transition-opacity duration-500">
+    <div class="bg-appCard p-10 rounded-3xl shadow-2xl max-w-sm w-full text-center border border-slate-700">
+      <span class="text-5xl mb-4 block">🍿</span>
+      <h2 class="text-2xl font-black text-appText tracking-tight mb-2">Ciné <span class="text-appPrimary">Randomizer</span></h2>
+      <p class="text-sm text-slate-400 mb-8">Connectez-vous pour synchroniser vos soirées films avec votre moitié.</p>
+      
+      <input type="email" id="email-input" placeholder="Adresse e-mail" class="w-full text-center text-sm font-bold bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 outline-none focus:border-appPrimary mb-3 transition-colors text-white">
+      
+      <input type="password" id="pwd-input" placeholder="Mot de passe" class="w-full text-center text-sm font-bold bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 outline-none focus:border-appPrimary mb-6 transition-colors text-white">
+      
+      <button onclick="handleLogin()" id="btn-login" class="w-full bg-appPrimary hover:bg-appPrimaryHover text-white font-bold py-3.5 rounded-xl transition shadow-[0_0_15px_rgba(225,29,72,0.4)] flex justify-center items-center text-sm uppercase tracking-wide">
+        Entrer en salle
+      </button>
+      <p id="login-error" class="text-red-400 text-sm font-bold mt-4 opacity-0 transition-opacity">Identifiants incorrects.</p>
+    </div>
+  </div>
 
   <header class="bg-appCard border-b border-slate-700 sticky top-0 z-30 shadow-lg">
     <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -47,6 +61,9 @@
           <p class="text-xs text-appMuted font-medium">Finis les débats du samedi soir !</p>
         </div>
       </div>
+      <button onclick="handleLogout()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 transition-colors flex items-center justify-center border border-slate-600" title="Se déconnecter">
+        <span class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></span>
+      </button>
     </div>
     <!-- Navigation par onglets -->
     <div class="max-w-4xl mx-auto px-4 flex space-x-2 overflow-x-auto hide-scrollbar text-sm font-bold">
@@ -55,7 +72,7 @@
     </div>
   </header>
 
-  <main class="flex-1 w-full max-w-4xl mx-auto px-4 py-6 flex flex-col">
+  <main class="flex-1 w-full max-w-4xl mx-auto px-4 py-6 flex flex-col pb-24">
     
     <!-- SECTION GÉNÉRATEUR (LA ROULETTE) -->
     <section id="sec-generator" class="flex flex-col flex-1 space-y-6">
@@ -123,6 +140,7 @@
             <button onclick="toggleFilter('plateforme', 'Prime')" data-group="plateforme" data-val="Prime" class="filter-btn active-filter bg-blue-900/30 text-blue-400 border border-blue-800/50 px-4 py-2 rounded-xl text-sm font-semibold transition">Prime Video</button>
             <button onclick="toggleFilter('plateforme', 'Disney+')" data-group="plateforme" data-val="Disney+" class="filter-btn active-filter bg-indigo-900/30 text-indigo-400 border border-indigo-800/50 px-4 py-2 rounded-xl text-sm font-semibold transition">Disney+</button>
             <button onclick="toggleFilter('plateforme', 'Canal+')" data-group="plateforme" data-val="Canal+" class="filter-btn active-filter bg-slate-800 text-slate-300 border border-slate-600 px-4 py-2 rounded-xl text-sm font-semibold transition">Canal+</button>
+            <button onclick="toggleFilter('plateforme', 'Autre')" data-group="plateforme" data-val="Autre" class="filter-btn active-filter bg-slate-800 text-slate-300 border border-slate-600 px-4 py-2 rounded-xl text-sm font-semibold transition">VOD / Autre</button>
           </div>
         </div>
 
@@ -141,6 +159,7 @@
       </div>
     </section>
 
+    <!-- SECTION CATALOGUE -->
     <section id="sec-catalogue" class="hidden flex-col flex-1 space-y-4">
       <div class="flex items-center justify-between gap-4 bg-appCard p-4 rounded-2xl border border-slate-700">
         <div class="relative flex-1">
@@ -151,9 +170,9 @@
       </div>
 
       <div class="flex justify-end gap-2 text-xs font-medium px-2">
-        <button onclick="filterSeen(false)" id="btn-seen-false" class="text-appPrimary underline">À voir</button>
+        <button onclick="filterSeen(false)" id="btn-seen-false" class="text-appPrimary underline font-bold tracking-wide">À voir</button>
         <span class="text-slate-600">|</span>
-        <button onclick="filterSeen(true)" id="btn-seen-true" class="text-slate-500 hover:text-slate-300">Déjà vus</button>
+        <button onclick="filterSeen(true)" id="btn-seen-true" class="text-slate-500 hover:text-slate-300 font-bold tracking-wide">Déjà vus</button>
       </div>
 
       <!-- Grille du catalogue -->
@@ -163,11 +182,87 @@
     </section>
   </main>
 
-  <script>
-    // --- LA BASE DE DONNÉES DES FILMS & SÉRIES ---
-    // Pour ajouter un film, copiez-collez une ligne juste avant le "];" à la fin, comme pour les recettes !
-    const database = [
-      // NETFLIX
+  <!-- BOUTON FLOTTANT AJOUTER -->
+  <button onclick="openAddModal()" id="btn-add" class="fixed bottom-6 right-6 h-14 w-14 bg-appPrimary text-white rounded-full shadow-[0_0_20px_rgba(225,29,72,0.5)] flex items-center justify-center text-3xl hover:bg-appPrimaryHover transition transform hover:scale-105 z-40 hidden border-2 border-appBg">
+    +
+  </button>
+
+  <!-- MODAL D'AJOUT -->
+  <dialog id="add-modal" class="p-0 rounded-3xl shadow-2xl backdrop:bg-appBg/80 backdrop-blur-sm max-w-md w-full mx-auto mt-20 border border-slate-700 bg-appCard">
+    <div class="p-6 text-white">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-black text-white">Ajouter au catalogue</h3>
+            <button onclick="closeAddModal()" class="text-slate-500 hover:text-white text-2xl font-bold leading-none">&times;</button>
+        </div>
+        <form id="add-form" onsubmit="submitNewMedia(event)" class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Titre</label>
+                <input type="text" id="f-titre" required placeholder="Ex: Inception..." class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-appPrimary text-white">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Type</label>
+                    <select id="f-type" class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-appPrimary text-white">
+                        <option value="Film">🍿 Film</option>
+                        <option value="Série">📺 Série</option>
+                        <option value="Documentaire">🌍 Docu</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Plateforme</label>
+                    <select id="f-plateforme" class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-appPrimary text-white">
+                        <option value="Netflix">🔴 Netflix</option>
+                        <option value="Prime">🔵 Prime</option>
+                        <option value="Disney+">✨ Disney+</option>
+                        <option value="Canal+">➕ Canal+</option>
+                        <option value="Autre">🍿 VOD / Autre</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Genre</label>
+                    <select id="f-genre" class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-appPrimary text-white">
+                        <option value="Action">💥 Action</option>
+                        <option value="Comédie">😂 Comédie</option>
+                        <option value="Drame">🎭 Drame</option>
+                        <option value="Sci-Fi / Fantasy">🛸 Sci-Fi / Fantasy</option>
+                        <option value="Thriller / Horreur">🔪 Thriller</option>
+                        <option value="Animation">🎨 Animation</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Durée approx.</label>
+                    <input type="text" id="f-duree" placeholder="Ex: 2h10 ou 45min/ép" class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-appPrimary text-white">
+                </div>
+            </div>
+            
+            <button type="submit" id="btn-submit" class="w-full bg-appPrimary hover:bg-appPrimaryHover text-white font-bold py-3.5 rounded-xl mt-4 shadow-lg transition">Enregistrer le film</button>
+        </form>
+    </div>
+  </dialog>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // 🔴 CLÉS FIREBASE 🔴
+    const firebaseConfig = {
+      apiKey: "AIzaSyCNI2b-69gTENfzwjVq3jQCkXppJIMZrRU",
+      authDomain: "notrealbum-e1918.firebaseapp.com",
+      projectId: "notrealbum-e1918",
+      storageBucket: "notrealbum-e1918.firebasestorage.app",
+      messagingSenderId: "253496221106",
+      appId: "1:253496221106:web:59404a9b7dfcc1962358ab"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // --- LA BASE DE DONNÉES DES FILMS & SÉRIES (600 Titres) ---
+    const baseDatabase = [
       { id: 1, titre: "Stranger Things", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
       { id: 2, titre: "Le Jeu de la Dame", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
       { id: 3, titre: "Black Mirror", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
@@ -180,8 +275,6 @@
       { id: 10, titre: "Marriage Story", genre: "Drame", plateforme: "Netflix", type: "Film", duree: "2h17" },
       { id: 11, titre: "Notre Planète", genre: "Documentaire", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
       { id: 12, titre: "L'Arnaqueur de Tinder", genre: "Documentaire", plateforme: "Netflix", type: "Film", duree: "1h54" },
-      
-      // PRIME VIDEO
       { id: 13, titre: "The Boys", genre: "Action", plateforme: "Prime", type: "Série", duree: "1h/ép" },
       { id: 14, titre: "Fallout", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "55min/ép" },
       { id: 15, titre: "The Office (US)", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "22min/ép" },
@@ -194,8 +287,6 @@
       { id: 22, titre: "Saltburn", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h11" },
       { id: 23, titre: "Orelsan : Montre jamais ça à personne", genre: "Documentaire", plateforme: "Prime", type: "Série", duree: "40min/ép" },
       { id: 24, titre: "Clarkson à la ferme", genre: "Documentaire", plateforme: "Prime", type: "Série", duree: "45min/ép" },
-
-      // DISNEY+
       { id: 25, titre: "The Mandalorian", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Série", duree: "40min/ép" },
       { id: 26, titre: "Loki", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Série", duree: "50min/ép" },
       { id: 27, titre: "The Bear", genre: "Drame", plateforme: "Disney+", type: "Série", duree: "30min/ép" },
@@ -209,8 +300,6 @@
       { id: 35, titre: "Pauvres Créatures", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h21" },
       { id: 36, titre: "Free Solo", genre: "Documentaire", plateforme: "Disney+", type: "Film", duree: "1h40" },
       { id: 37, titre: "The Beatles : Get Back", genre: "Documentaire", plateforme: "Disney+", type: "Série", duree: "2h/ép" },
-
-      // CANAL+
       { id: 38, titre: "Le Bureau des Légendes", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
       { id: 39, titre: "D'Argent et de Sang", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
       { id: 40, titre: "B.R.I.", genre: "Action", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
@@ -224,9 +313,6 @@
       { id: 48, titre: "Yannick", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h07" },
       { id: 49, titre: "L'Innocent", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h39" },
       { id: 50, titre: "La Panthère des Neiges", genre: "Documentaire", plateforme: "Canal+", type: "Film", duree: "1h32" },
-      
-      // --- LES 100 NOUVEAUX AJOUTS ---
-      // NETFLIX (Nouveaux)
       { id: 51, titre: "Peaky Blinders", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
       { id: 52, titre: "Breaking Bad", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
       { id: 53, titre: "Better Call Saul", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
@@ -252,8 +338,6 @@
       { id: 73, titre: "Le Cercle des Neiges", genre: "Drame", plateforme: "Netflix", type: "Film", duree: "2h24" },
       { id: 74, titre: "Extraction 2", genre: "Action", plateforme: "Netflix", type: "Film", duree: "2h02" },
       { id: 75, titre: "The Old Guard", genre: "Action", plateforme: "Netflix", type: "Film", duree: "2h05" },
-
-      // PRIME VIDEO (Nouveaux)
       { id: 76, titre: "Les Anneaux de Pouvoir", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "1h/ép" },
       { id: 77, titre: "The Expanse", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "45min/ép" },
       { id: 78, titre: "Reacher", genre: "Action", plateforme: "Prime", type: "Série", duree: "50min/ép" },
@@ -279,8 +363,6 @@
       { id: 98, titre: "The Truman Show", genre: "Drame", plateforme: "Prime", type: "Film", duree: "1h43" },
       { id: 99, titre: "Le Fabuleux Destin d'Amélie Poulain", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h02" },
       { id: 100, titre: "Seven", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h07" },
-
-      // DISNEY+ (Nouveaux)
       { id: 101, titre: "Andor", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Série", duree: "45min/ép" },
       { id: 102, titre: "WandaVision", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Série", duree: "40min/ép" },
       { id: 103, titre: "Daredevil", genre: "Action", plateforme: "Disney+", type: "Série", duree: "55min/ép" },
@@ -306,8 +388,6 @@
       { id: 123, titre: "Deadpool", genre: "Comédie", plateforme: "Disney+", type: "Film", duree: "1h48" },
       { id: 124, titre: "Alien, le huitième passager", genre: "Thriller / Horreur", plateforme: "Disney+", type: "Film", duree: "1h57" },
       { id: 125, titre: "Avatar", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h42" },
-
-      // CANAL+ (Nouveaux)
       { id: 126, titre: "Engrenages", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "55min/ép" },
       { id: 127, titre: "Hippocrate", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
       { id: 128, titre: "Validé", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "30min/ép" },
@@ -333,9 +413,6 @@
       { id: 148, titre: "Sans Filtre", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "2h27" },
       { id: 149, titre: "Drive My Car", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "2h59" },
       { id: 150, titre: "Un P'tit Truc en Plus", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h39" },
-      
-      // --- LA MÉGA EXTENSION : 150 NOUVEAUX TITRES ---
-      // NETFLIX (Séries & Films)
       { id: 151, titre: "La Chronique des Bridgerton", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
       { id: 152, titre: "You", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
       { id: 153, titre: "Lucifer", genre: "Sci-Fi / Fantasy", plateforme: "Netflix", type: "Série", duree: "45min/ép" },
@@ -376,8 +453,6 @@
       { id: 188, titre: "Enola Holmes", genre: "Comédie", plateforme: "Netflix", type: "Film", duree: "2h03" },
       { id: 189, titre: "Les Mitchell contre les machines", genre: "Animation", plateforme: "Netflix", type: "Film", duree: "1h54" },
       { id: 190, titre: "Formula 1 : Pilotes de leur destin", genre: "Documentaire", plateforme: "Netflix", type: "Série", duree: "45min/ép" },
-
-      // PRIME VIDEO (Séries & Films)
       { id: 191, titre: "The Peripheral", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "1h/ép" },
       { id: 192, titre: "Le Maître du Haut Château", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "1h/ép" },
       { id: 193, titre: "Carnival Row", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Série", duree: "55min/ép" },
@@ -418,8 +493,6 @@
       { id: 228, titre: "Love Actually", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h15" },
       { id: 229, titre: "The Holiday", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h16" },
       { id: 230, titre: "Notting Hill", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h04" },
-
-      // DISNEY+ (Séries & Films)
       { id: 231, titre: "Star Wars : Un Nouvel Espoir", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h01" },
       { id: 232, titre: "Star Wars : Le Retour du Jedi", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h11" },
       { id: 233, titre: "Star Wars: The Clone Wars", genre: "Animation", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
@@ -455,8 +528,6 @@
       { id: 263, titre: "Little Miss Sunshine", genre: "Comédie", plateforme: "Disney+", type: "Film", duree: "1h41" },
       { id: 264, titre: "Le Diable s'habille en Prada", genre: "Comédie", plateforme: "Disney+", type: "Film", duree: "1h49" },
       { id: 265, titre: "Sans un bruit", genre: "Thriller / Horreur", plateforme: "Disney+", type: "Film", duree: "1h30" },
-
-      // CANAL+ & APPLE TV+ INCLUS (Séries & Films)
       { id: 266, titre: "Severance", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
       { id: 267, titre: "Ted Lasso", genre: "Comédie", plateforme: "Canal+", type: "Série", duree: "35min/ép" },
       { id: 268, titre: "The Morning Show", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "1h/ép" },
@@ -492,8 +563,6 @@
       { id: 298, titre: "Neuilly sa mère !", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h30" },
       { id: 299, titre: "Le Cinquième Élément", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Film", duree: "2h06" },
       { id: 300, titre: "Léon", genre: "Action", plateforme: "Canal+", type: "Film", duree: "2h13" },
-      
-      // --- FILMS D'ANIMATION PRIME VIDEO ---
       { id: 301, titre: "Moi, Moche et Méchant", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h35" },
       { id: 302, titre: "Moi, Moche et Méchant 2", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h38" },
       { id: 303, titre: "Kung Fu Panda", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h32" },
@@ -509,10 +578,6 @@
       { id: 313, titre: "Le Grinch", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h25" },
       { id: 314, titre: "Wallace et Gromit : Le Mystère du lapin-garou", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h25" },
       { id: 315, titre: "Evangelion: 3.0+1.0 Thrice Upon a Time", genre: "Animation", plateforme: "Prime", type: "Film", duree: "2h35" },
-      
-      // --- L'ULTIME EXTENSION : EN ROUTE VERS LES 600 ---
-      
-      // BLOCK 1 : SAGAS ET CLASSIQUES (Films)
       { id: 316, titre: "Harry Potter à l'école des sorciers", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h32" },
       { id: 317, titre: "Harry Potter et la Chambre des secrets", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h41" },
       { id: 318, titre: "Harry Potter et le Prisonnier d'Azkaban", genre: "Sci-Fi / Fantasy", plateforme: "Prime", type: "Film", duree: "2h22" },
@@ -538,8 +603,6 @@
       { id: 338, titre: "Le Dernier Samouraï", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h34" },
       { id: 339, titre: "Troie", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h42" },
       { id: 340, titre: "300", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h57" },
-
-      // BLOCK 2 : THRILLERS ET POLICIERS
       { id: 341, titre: "Zodiac", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h37" },
       { id: 342, titre: "Prisoners", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h33" },
       { id: 343, titre: "Gone Girl", genre: "Thriller / Horreur", plateforme: "Disney+", type: "Film", duree: "2h29" },
@@ -560,8 +623,6 @@
       { id: 358, titre: "Black Swan", genre: "Drame", plateforme: "Disney+", type: "Film", duree: "1h48" },
       { id: 359, titre: "Night Call", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "1h57" },
       { id: 360, titre: "Drive", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h40" },
-
-      // BLOCK 3 : SÉRIES (Drames & Comédies)
       { id: 361, titre: "Les Soprano", genre: "Drame", plateforme: "Prime", type: "Série", duree: "50min/ép" },
       { id: 362, titre: "The Wire (Sur écoute)", genre: "Drame", plateforme: "Prime", type: "Série", duree: "1h/ép" },
       { id: 363, titre: "Succession", genre: "Drame", plateforme: "Prime", type: "Série", duree: "1h/ép" },
@@ -582,8 +643,6 @@
       { id: 378, titre: "Euphoria", genre: "Drame", plateforme: "Prime", type: "Série", duree: "1h/ép" },
       { id: 379, titre: "Big Little Lies", genre: "Drame", plateforme: "Prime", type: "Série", duree: "50min/ép" },
       { id: 380, titre: "Mare of Easttown", genre: "Drame", plateforme: "Prime", type: "Série", duree: "1h/ép" },
-
-      // BLOCK 4 : ANIMES ET MANGAS (Séries & Films)
       { id: 381, titre: "L'Attaque des Titans", genre: "Animation", plateforme: "Prime", type: "Série", duree: "24min/ép" },
       { id: 382, titre: "Demon Slayer", genre: "Animation", plateforme: "Prime", type: "Série", duree: "24min/ép" },
       { id: 383, titre: "Jujutsu Kaisen", genre: "Animation", plateforme: "Prime", type: "Série", duree: "24min/ép" },
@@ -604,8 +663,6 @@
       { id: 398, titre: "Suzume", genre: "Animation", plateforme: "Prime", type: "Film", duree: "2h02" },
       { id: 399, titre: "Akira", genre: "Animation", plateforme: "Prime", type: "Film", duree: "2h04" },
       { id: 400, titre: "Ghost in the Shell", genre: "Animation", plateforme: "Prime", type: "Film", duree: "1h23" },
-
-      // BLOCK 5 : CINÉMA FRANÇAIS ET COMÉDIES
       { id: 401, titre: "La Haine", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "1h38" },
       { id: 402, titre: "Le Fabuleux Destin d'Amélie Poulain", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h02" },
       { id: 403, titre: "Les Visiteurs", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h47" },
@@ -631,8 +688,6 @@
       { id: 423, titre: "Anatomie d'une chute", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "2h31" },
       { id: 424, titre: "Grave", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "1h39" },
       { id: 425, titre: "Titane", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "1h48" },
-
-      // BLOCK 6 : CHEFS-D'ŒUVRE MARVEL ET DC
       { id: 426, titre: "The Dark Knight : Le Chevalier Noir", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h32" },
       { id: 427, titre: "The Dark Knight Rises", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h44" },
       { id: 428, titre: "Batman Begins", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h20" },
@@ -653,8 +708,6 @@
       { id: 443, titre: "Soul", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h40" },
       { id: 444, titre: "Vice-Versa 2", genre: "Animation", plateforme: "Disney+", type: "Film", duree: "1h36" },
       { id: 445, titre: "Deadpool 2", genre: "Comédie", plateforme: "Disney+", type: "Film", duree: "1h59" },
-
-      // BLOCK 7 : GRANDES COMÉDIES US & ROM-COMS
       { id: 446, titre: "Crazy, Stupid, Love.", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h58" },
       { id: 447, titre: "Love Actually", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h15" },
       { id: 448, titre: "Coup de foudre à Notting Hill", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h04" },
@@ -670,8 +723,6 @@
       { id: 458, titre: "Hot Fuzz", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "2h01" },
       { id: 459, titre: "Le Dernier Pub avant la fin du monde", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h49" },
       { id: 460, titre: "Ted", genre: "Comédie", plateforme: "Prime", type: "Film", duree: "1h46" },
-
-      // BLOCK 8 : ÉNORMES BLOCKBUSTERS D'ACTION
       { id: 461, titre: "Fast & Furious", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h46" },
       { id: 462, titre: "Fast & Furious 5", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h10" },
       { id: 463, titre: "Fast & Furious 7", genre: "Action", plateforme: "Prime", type: "Film", duree: "2h17" },
@@ -692,8 +743,6 @@
       { id: 478, titre: "Snatch", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h44" },
       { id: 479, titre: "Arnaques, Crimes et Botanique", genre: "Action", plateforme: "Prime", type: "Film", duree: "1h47" },
       { id: 480, titre: "Baby Driver", genre: "Action", plateforme: "Netflix", type: "Film", duree: "1h53" },
-
-      // BLOCK 9 : APPLE TV+ ET CRÉATIONS CANAL
       { id: 481, titre: "Severance", genre: "Sci-Fi / Fantasy", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
       { id: 482, titre: "Ted Lasso", genre: "Comédie", plateforme: "Canal+", type: "Série", duree: "35min/ép" },
       { id: 483, titre: "The Morning Show", genre: "Drame", plateforme: "Canal+", type: "Série", duree: "1h/ép" },
@@ -714,8 +763,6 @@
       { id: 498, titre: "Le Flambeau", genre: "Comédie", plateforme: "Canal+", type: "Série", duree: "30min/ép" },
       { id: 499, titre: "B.R.I", genre: "Action", plateforme: "Canal+", type: "Série", duree: "50min/ép" },
       { id: 500, titre: "Gangs of London", genre: "Action", plateforme: "Canal+", type: "Série", duree: "1h/ép" },
-
-      // BLOCK 10 : DOCUMENTAIRES (Nature, Sport, Crimes)
       { id: 501, titre: "Notre Planète", genre: "Documentaire", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
       { id: 502, titre: "Planète Terre II", genre: "Documentaire", plateforme: "Prime", type: "Série", duree: "50min/ép" },
       { id: 503, titre: "La Sagesse de la Pieuvre", genre: "Documentaire", plateforme: "Netflix", type: "Film", duree: "1h25" },
@@ -731,8 +778,6 @@
       { id: 513, titre: "The Beatles: Get Back", genre: "Documentaire", plateforme: "Disney+", type: "Série", duree: "2h/ép" },
       { id: 514, titre: "La Panthère des Neiges", genre: "Documentaire", plateforme: "Canal+", type: "Film", duree: "1h32" },
       { id: 515, titre: "Super Size Me", genre: "Documentaire", plateforme: "Prime", type: "Film", duree: "1h40" },
-
-      // BLOCK 11 : K-DRAMAS ET INTERNATIONAL
       { id: 516, titre: "Squid Game", genre: "Thriller / Horreur", plateforme: "Netflix", type: "Série", duree: "1h/ép" },
       { id: 517, titre: "Alice in Borderland", genre: "Action", plateforme: "Netflix", type: "Série", duree: "50min/ép" },
       { id: 518, titre: "Crash Landing on You", genre: "Drame", plateforme: "Netflix", type: "Série", duree: "1h20/ép" },
@@ -743,8 +788,6 @@
       { id: 523, titre: "Parasite", genre: "Thriller / Horreur", plateforme: "Canal+", type: "Film", duree: "2h12" },
       { id: 524, titre: "Dernier train pour Busan", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "1h58" },
       { id: 525, titre: "Old Boy", genre: "Thriller / Horreur", plateforme: "Prime", type: "Film", duree: "2h00" },
-
-      // BLOCK 12 : SCIENCE-FICTION & FANTASTIQUE CLASSIQUES
       { id: 526, titre: "Alien, le huitième passager", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "1h57" },
       { id: 527, titre: "Aliens le retour", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h17" },
       { id: 528, titre: "Predator", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "1h47" },
@@ -760,8 +803,6 @@
       { id: 538, titre: "Star Wars : L'Empire Contre-Attaque", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h04" },
       { id: 539, titre: "Star Wars : Le Retour du Jedi", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h11" },
       { id: 540, titre: "Star Wars : La Revanche des Sith", genre: "Sci-Fi / Fantasy", plateforme: "Disney+", type: "Film", duree: "2h20" },
-
-      // BLOCK 13 : SÉRIES COMFORT & CULTES
       { id: 541, titre: "Friends", genre: "Comédie", plateforme: "Netflix", type: "Série", duree: "22min/ép" },
       { id: 542, titre: "The Office (US)", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "22min/ép" },
       { id: 543, titre: "Parks and Recreation", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "22min/ép" },
@@ -772,8 +813,6 @@
       { id: 548, titre: "Kaamelott", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "7min/ép" },
       { id: 549, titre: "Un gars, une fille", genre: "Comédie", plateforme: "Prime", type: "Série", duree: "6min/ép" },
       { id: 550, titre: "Modern Family", genre: "Comédie", plateforme: "Disney+", type: "Série", duree: "22min/ép" },
-
-      // BLOCK 14 : NOUVEAUTÉS ET TENDANCES 2023-2024
       { id: 551, titre: "Oppenheimer", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "3h00" },
       { id: 552, titre: "Barbie", genre: "Comédie", plateforme: "Canal+", type: "Film", duree: "1h54" },
       { id: 553, titre: "Killers of the Flower Moon", genre: "Drame", plateforme: "Canal+", type: "Film", duree: "3h26" },
@@ -784,8 +823,6 @@
       { id: 558, titre: "Super Mario Bros. le film", genre: "Animation", plateforme: "Canal+", type: "Film", duree: "1h32" },
       { id: 559, titre: "Le Garçon et le Héron", genre: "Animation", plateforme: "Canal+", type: "Film", duree: "2h04" },
       { id: 560, titre: "Godzilla Minus One", genre: "Action", plateforme: "Netflix", type: "Film", duree: "2h04" },
-
-      // BLOCK 15 : CHEFS D'OEUVRES GLOBAUX POUR FINIR EN BEAUTÉ
       { id: 561, titre: "Le Parrain", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h55" },
       { id: 562, titre: "Le Parrain, 2ème partie", genre: "Drame", plateforme: "Prime", type: "Film", duree: "3h22" },
       { id: 563, titre: "Les Affranchis", genre: "Drame", plateforme: "Prime", type: "Film", duree: "2h25" },
@@ -828,49 +865,107 @@
       { id: 600, titre: "Arcane", genre: "Animation", plateforme: "Netflix", type: "Série", duree: "40min/ép" }
     ];
 
-    // --- VARIABLES D'ÉTAT ---
-    // Sauvegarde des films marqués comme "déjà vus" dans le téléphone
-    let seenIds = JSON.parse(localStorage.getItem('cinerandom_seen')) || [];
+    let database = [...baseDatabase];
+    let seenIds = [];
+    let customMedia = [];
     
-    // État des filtres : quels boutons sont cochés ?
+    // Filtres actifs
     let activeFilters = {
-      type: ['Film'], // Par défaut, on cherche un film
-      plateforme: ['Netflix', 'Prime', 'Disney+', 'Canal+'], // Toutes les plateformes activées
-      genre: ['Comédie', 'Action', 'Sci-Fi / Fantasy', 'Thriller / Horreur', 'Drame', 'Animation'] // Tous les genres
+      type: ['Film'],
+      plateforme: ['Netflix', 'Prime', 'Disney+', 'Canal+'],
+      genre: ['Comédie', 'Action', 'Sci-Fi / Fantasy', 'Thriller / Horreur', 'Drame', 'Animation']
     };
 
-    let showSeenInCatalogue = false; // Onglet catalogue: afficher "À voir" ou "Déjà vus"
+    let showSeenInCatalogue = false;
     let currentWinnerId = null;
     let rouletteInterval = null;
 
-    // --- STREAMING_CHUNK: Logique de la Roulette ---
-    
-    // Obtenir la liste des œuvres qui correspondent aux filtres ET qui n'ont pas été vues
+    // --- FIREBASE AUTH & SYNC ---
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById('login-screen').style.opacity = '0';
+        setTimeout(() => {
+          document.getElementById('login-screen').style.display = 'none';
+          document.getElementById('body-container').classList.remove('overflow-hidden');
+        }, 500);
+        document.getElementById('btn-add').classList.remove('hidden');
+        initCloudSync();
+      } else {
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('login-screen').style.opacity = '1';
+        document.getElementById('body-container').classList.add('overflow-hidden');
+        document.getElementById('btn-add').classList.add('hidden');
+      }
+    });
+
+    window.handleLogin = async () => {
+      const email = document.getElementById('email-input').value.trim();
+      const pwd = document.getElementById('pwd-input').value.trim();
+      const btn = document.getElementById('btn-login');
+      const errorText = document.getElementById('login-error');
+      
+      if(!email || !pwd) return;
+      btn.innerHTML = `<span class="animate-pulse">Connexion...</span>`;
+      errorText.style.opacity = '0';
+
+      try {
+        await signInWithEmailAndPassword(auth, email, pwd);
+      } catch (error) {
+        errorText.style.opacity = '1';
+        btn.innerHTML = `Entrer en salle`;
+      }
+    };
+
+    window.handleLogout = () => signOut(auth);
+
+    function initCloudSync() {
+      const docRef = doc(db, "sharedData", "cinerandom_state");
+      onSnapshot(docRef, async (docSnap) => {
+        if (!docSnap.exists()) {
+          await setDoc(docRef, { seenIds: [], customMedia: [] });
+        } else {
+          const data = docSnap.data();
+          seenIds = data.seenIds || [];
+          customMedia = data.customMedia || [];
+          database = [...baseDatabase, ...customMedia];
+          updateFilterButtonsUI();
+          renderCatalogue();
+        }
+      });
+    }
+
+    async function saveCloudState() {
+      try {
+        const docRef = doc(db, "sharedData", "cinerandom_state");
+        await updateDoc(docRef, { seenIds, customMedia });
+      } catch(e) {
+        console.error("Erreur sauvegarde cloud:", e);
+      }
+    }
+
+    // --- LOGIQUE ROULETTE ---
     function getFilteredList() {
       return database.filter(item => {
         const isNotSeen = !seenIds.includes(item.id);
         const matchesType = activeFilters.type.includes(item.type);
-        const matchesPlat = activeFilters.plateforme.includes(item.plateforme);
+        const matchesPlat = activeFilters.plateforme.includes(item.plateforme) || (item.plateforme === 'Autre' && activeFilters.plateforme.includes('Autre'));
         const matchesGenre = activeFilters.genre.includes(item.genre);
         return isNotSeen && matchesType && matchesPlat && matchesGenre;
       });
     }
 
-    function startRoulette() {
+    window.startRoulette = () => {
       const candidates = getFilteredList();
       const errorDiv = document.getElementById('error-message');
       const btnDraw = document.getElementById('btn-draw');
       
-      // Si aucun film ne correspond, on affiche une erreur
       if (candidates.length === 0) {
         errorDiv.classList.remove('hidden');
-        setTimeout(() => errorDiv.classList.add('hidden'), 4000); // Disparaît après 4s
+        setTimeout(() => errorDiv.classList.add('hidden'), 4000);
         return;
       }
       
       errorDiv.classList.add('hidden');
-      
-      // Préparation de l'interface
       document.getElementById('default-screen').classList.add('hidden');
       document.getElementById('winner-screen').classList.add('hidden');
       const rouletteScreen = document.getElementById('roulette-screen');
@@ -878,30 +973,23 @@
       rouletteScreen.classList.remove('hidden');
       rouletteScreen.classList.add('flex', 'flex-col', 'items-center', 'justify-center');
       
-      // Désactiver le bouton pendant le tirage
       btnDraw.disabled = true;
       btnDraw.classList.add('opacity-50', 'cursor-not-allowed');
       btnDraw.innerHTML = '🎰 Tirage en cours...';
 
-      // L'effet Roulette (change de texte toutes les 80 millisecondes)
       let ticks = 0;
-      const maxTicks = 35; // Durée du tirage (35 * 80ms = ~2.8 secondes)
+      const maxTicks = 35;
       
       rouletteInterval = setInterval(() => {
-        // Piocher un titre au hasard juste pour l'animation
         const randomItem = candidates[Math.floor(Math.random() * candidates.length)];
         rouletteText.innerText = randomItem.titre;
         ticks++;
 
-        // Quand l'animation est finie
         if (ticks >= maxTicks) {
           clearInterval(rouletteInterval);
-          
-          // Piocher le VRAI grand gagnant
           const finalWinner = candidates[Math.floor(Math.random() * candidates.length)];
           showWinner(finalWinner);
           
-          // Réactiver le bouton
           btnDraw.disabled = false;
           btnDraw.classList.remove('opacity-50', 'cursor-not-allowed');
           btnDraw.innerHTML = '<span class="text-2xl">🔄</span> Relancer un tirage';
@@ -920,7 +1008,6 @@
       
       document.getElementById('winner-title').innerText = winner.titre;
       
-      // Créer les petits badges (Plateforme, Genre, Durée)
       const badgesContainer = document.getElementById('winner-badges');
       badgesContainer.innerHTML = `
         <span class="bg-slate-700 text-slate-200 border border-slate-600 px-3 py-1 rounded-lg text-xs font-bold">${getPlatEmoji(winner.plateforme)} ${winner.plateforme}</span>
@@ -929,24 +1016,19 @@
       `;
     }
 
-    function markWinnerAsSeen() {
+    window.markWinnerAsSeen = async () => {
       if (currentWinnerId && !seenIds.includes(currentWinnerId)) {
         seenIds.push(currentWinnerId);
-        localStorage.setItem('cinerandom_seen', JSON.stringify(seenIds));
+        await saveCloudState();
         
-        // Petite animation de validation
         const btn = document.querySelector('#winner-screen button');
         const originalText = btn.innerText;
-        btn.innerText = "✅ Enregistré !";
+        btn.innerText = "✅ Enregistré pour tous les deux !";
         btn.classList.add('text-green-400');
-        
-        // Mettre à jour le catalogue en arrière-plan
-        renderCatalogue();
         
         setTimeout(() => {
           btn.innerText = originalText;
           btn.classList.remove('text-green-400');
-          // On cache le gagnant et on remet l'écran par défaut
           document.getElementById('winner-screen').classList.add('hidden');
           document.getElementById('winner-screen').classList.remove('flex');
           document.getElementById('default-screen').classList.remove('hidden');
@@ -955,14 +1037,12 @@
       }
     }
 
-    // --- STREAMING_CHUNK: Logique des Filtres ---
-    function toggleFilter(group, value) {
+    // --- FILTRES ---
+    window.toggleFilter = (group, value) => {
       const index = activeFilters[group].indexOf(value);
       if (index > -1) {
-        // Si c'est coché, on décoche
         activeFilters[group].splice(index, 1);
       } else {
-        // Si c'est décoché, on coche
         activeFilters[group].push(value);
       }
       updateFilterButtonsUI();
@@ -974,11 +1054,9 @@
         const val = btn.dataset.val;
         const isActive = activeFilters[group].includes(val);
         
-        // Base classes fixes pour la taille selon le groupe
         const baseClasses = group === 'genre' ? 'px-3 py-1.5 rounded-lg text-xs' : 'px-4 py-2 rounded-xl text-sm';
         
         if (isActive) {
-          // Styles TRES visibles pour les éléments actifs (Couleur pleine + effet néon + bordure)
           btn.classList.add('active-filter');
           if(group === 'type' || group === 'genre') {
             btn.className = `filter-btn active-filter bg-appPrimary text-white font-bold border-2 border-appPrimary shadow-[0_0_10px_rgba(225,29,72,0.5)] transition ${baseClasses}`;
@@ -987,48 +1065,45 @@
             if(val==='Prime') btn.className = `filter-btn active-filter bg-blue-600 text-white font-bold border-2 border-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.5)] transition ${baseClasses}`;
             if(val==='Disney+') btn.className = `filter-btn active-filter bg-indigo-600 text-white font-bold border-2 border-indigo-500 shadow-[0_0_10px_rgba(79,70,229,0.5)] transition ${baseClasses}`;
             if(val==='Canal+') btn.className = `filter-btn active-filter bg-slate-900 text-white font-bold border-2 border-slate-400 shadow-[0_0_10px_rgba(148,163,184,0.5)] transition ${baseClasses}`;
+            if(val==='Autre') btn.className = `filter-btn active-filter bg-slate-700 text-white font-bold border-2 border-slate-500 shadow-[0_0_10px_rgba(100,116,139,0.5)] transition ${baseClasses}`;
           }
         } else {
-          // Styles inactifs (grisés, semi-transparents, texte discret)
           btn.classList.remove('active-filter');
           btn.className = `filter-btn bg-slate-800 text-slate-500 border border-slate-700 opacity-40 hover:opacity-80 font-medium transition ${baseClasses}`;
         }
-        
-        // Réattribuer les datasets car on a écrasé className
         btn.dataset.group = group;
         btn.dataset.val = val;
       });
     }
 
-    function resetFilters() {
+    window.resetFilters = () => {
       activeFilters = {
         type: ['Film', 'Série', 'Documentaire'],
-        plateforme: ['Netflix', 'Prime', 'Disney+', 'Canal+'],
+        plateforme: ['Netflix', 'Prime', 'Disney+', 'Canal+', 'Autre'],
         genre: ['Comédie', 'Action', 'Sci-Fi / Fantasy', 'Thriller / Horreur', 'Drame', 'Animation']
       };
       updateFilterButtonsUI();
     }
 
-    // --- STREAMING_CHUNK: Logique du Catalogue ---
-    function filterSeen(showSeen) {
+    // --- CATALOGUE ---
+    window.filterSeen = (showSeen) => {
       showSeenInCatalogue = showSeen;
-      document.getElementById('btn-seen-false').className = !showSeen ? "text-appPrimary underline" : "text-slate-500 hover:text-slate-300";
-      document.getElementById('btn-seen-true').className = showSeen ? "text-appPrimary underline" : "text-slate-500 hover:text-slate-300";
+      document.getElementById('btn-seen-false').className = !showSeen ? "text-appPrimary underline font-bold tracking-wide" : "text-slate-500 hover:text-slate-300 font-bold tracking-wide";
+      document.getElementById('btn-seen-true').className = showSeen ? "text-appPrimary underline font-bold tracking-wide" : "text-slate-500 hover:text-slate-300 font-bold tracking-wide";
       renderCatalogue();
     }
 
-    function toggleSeenStatus(id) {
+    window.toggleSeenStatus = async (id) => {
       const index = seenIds.indexOf(id);
       if (index > -1) {
-        seenIds.splice(index, 1); // Retirer des vus
+        seenIds.splice(index, 1);
       } else {
-        seenIds.push(id); // Ajouter aux vus
+        seenIds.push(id);
       }
-      localStorage.setItem('cinerandom_seen', JSON.stringify(seenIds));
-      renderCatalogue();
+      await saveCloudState();
     }
 
-    function renderCatalogue() {
+    window.renderCatalogue = () => {
       const grid = document.getElementById('catalogue-grid');
       grid.innerHTML = '';
       
@@ -1036,11 +1111,13 @@
       
       const itemsToDisplay = database.filter(item => {
         const isSeen = seenIds.includes(item.id);
-        // On affiche soit les non-vus, soit les vus selon l'onglet
         const matchesSeenStatus = showSeenInCatalogue ? isSeen : !isSeen;
         const matchesSearch = !query || item.titre.toLowerCase().includes(query);
         return matchesSeenStatus && matchesSearch;
       });
+
+      // Sort recent first if they are custom, otherwise by ID
+      itemsToDisplay.sort((a,b) => b.id - a.id);
 
       document.getElementById('catalogue-count').innerText = itemsToDisplay.length;
 
@@ -1052,40 +1129,37 @@
       itemsToDisplay.forEach(item => {
         const isSeen = seenIds.includes(item.id);
         const card = document.createElement('div');
-        card.className = "bg-appCard border border-slate-700 rounded-2xl p-4 flex flex-col justify-between h-full";
+        card.className = "bg-appCard border border-slate-700 rounded-2xl p-4 flex flex-col justify-between h-full hover:border-slate-500 transition-colors";
         
         card.innerHTML = `
           <div>
             <div class="flex justify-between items-start mb-2">
-              <span class="text-xs font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-md">${item.type}</span>
+              <span class="text-[10px] uppercase tracking-widest font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded-md">${item.type}</span>
               <button onclick="toggleSeenStatus(${item.id})" class="text-xs flex items-center gap-1 ${isSeen ? 'text-appPrimary hover:text-appPrimaryHover' : 'text-slate-500 hover:text-slate-300'} transition font-bold">
                 ${isSeen ? '✅ Marqué Vu' : '👁️ Marquer Vu'}
               </button>
             </div>
-            <h4 class="font-bold text-lg text-white leading-tight mb-2">${item.titre}</h4>
+            <h4 class="font-bold text-lg text-white leading-tight mb-2 pr-4">${item.titre}</h4>
           </div>
-          <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-700/50 text-xs font-semibold text-slate-300">
-            <span>${getPlatEmoji(item.plateforme)} ${item.plateforme}</span>
-            <span class="text-slate-600">•</span>
-            <span>${item.genre}</span>
+          <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-700/50 text-xs font-semibold text-slate-300">
+            <span class="bg-slate-800 px-2 py-1 rounded">${getPlatEmoji(item.plateforme)} ${item.plateforme}</span>
+            <span class="bg-slate-800 px-2 py-1 rounded">${item.genre}</span>
           </div>
         `;
         grid.appendChild(card);
       });
     }
 
-    // Petit utilitaire pour mettre un emoji sympa selon la plateforme
     function getPlatEmoji(plat) {
       if(plat === 'Netflix') return '🔴';
       if(plat === 'Prime') return '🔵';
       if(plat === 'Disney+') return '✨';
       if(plat === 'Canal+') return '➕';
-      return '📺';
+      return '🍿';
     }
 
-    // --- LOGIQUE DE NAVIGATION (ONGLETS) ---
-    function switchTab(tabId) {
-      // Gérer le style des onglets
+    // --- NAVIGATION ---
+    window.switchTab = (tabId) => {
       document.querySelectorAll('.nav-tab').forEach(t => {
         t.classList.remove('text-appPrimary', 'border-appPrimary');
         t.classList.add('text-appMuted', 'border-transparent');
@@ -1094,20 +1168,43 @@
       activeTab.classList.remove('text-appMuted', 'border-transparent');
       activeTab.classList.add('text-appPrimary', 'border-appPrimary');
       
-      // Afficher/Cacher les sections
       document.getElementById('sec-generator').classList.add('hidden');
       document.getElementById('sec-catalogue').classList.add('hidden');
       
-      // On retire le "hidden" et on s'assure que c'est un flex container
       document.getElementById(`sec-${tabId}`).classList.remove('hidden');
       document.getElementById(`sec-${tabId}`).classList.add('flex');
     }
 
-    // Initialisation au chargement de la page
-    window.addEventListener('DOMContentLoaded', () => {
-      updateFilterButtonsUI(); // Met les couleurs sur les filtres par défaut
-      renderCatalogue(); // Charge la liste
-    });
+    // --- AJOUT DE FILMS/SÉRIES ---
+    window.openAddModal = () => document.getElementById('add-modal').showModal();
+    window.closeAddModal = () => {
+        document.getElementById('add-modal').close();
+        document.getElementById('add-form').reset();
+    };
+
+    window.submitNewMedia = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-submit');
+        const oldText = btn.innerText;
+        btn.innerText = "Ajout en cours...";
+        
+        const newMedia = {
+            id: Date.now(), // ID unique pour que le Randomizer puisse le retrouver
+            titre: document.getElementById('f-titre').value,
+            type: document.getElementById('f-type').value,
+            plateforme: document.getElementById('f-plateforme').value,
+            genre: document.getElementById('f-genre').value,
+            duree: document.getElementById('f-duree').value || "Inconnue"
+        };
+
+        customMedia.unshift(newMedia); // Ajout local
+        await saveCloudState(); // Envoi dans le cloud avec l'historique des vus
+        
+        closeAddModal();
+        switchTab('catalogue');
+        
+        btn.innerText = oldText;
+    };
   </script>
 </body>
 </html>
