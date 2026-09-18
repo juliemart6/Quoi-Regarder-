@@ -1,243 +1,252 @@
 <!DOCTYPE html>
-<html lang="fr" class="h-full bg-slate-900 text-slate-200">
+<html lang="fr" class="h-full bg-[#09090B] text-zinc-200">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ciné Randomizer - Soirée Canapé</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
   <script>
     tailwind.config = {
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
           colors: {
-            appBg: '#0F172A',
-            appCard: '#1E293B',
-            appPrimary: '#E11D48', // Rouge cinéma
-            appPrimaryHover: '#BE123C',
-            appAccent: '#F59E0B', // Or Popcorn
-            appText: '#F8FAFC',
-            appMuted: '#64748B'
+            appBg: '#09090B', /* Zinc 950 - Presque noir */
+            appCard: '#18181B', /* Zinc 900 */
+            appPrimary: '#E50914', /* Rouge Netflix */
+            appPrimaryHover: '#B81D24',
+            appText: '#FAFAFA',
+            appMuted: '#A1A1AA' /* Zinc 400 */
           },
           animation: {
-            'pulse-fast': 'pulse 0.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'fade-in': 'fadeIn 0.4s ease-out forwards',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0', transform: 'translateY(10px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            }
           }
         }
       }
     }
   </script>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    .neon-text { text-shadow: 0 0 10px rgba(225, 29, 72, 0.7), 0 0 20px rgba(225, 29, 72, 0.5); }
+    .movie-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .movie-card:hover { transform: scale(1.02); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5); }
   </style>
 </head>
 <body class="h-full flex flex-col antialiased selection:bg-appPrimary selection:text-white overflow-hidden" id="body-container">
 
   <!-- ÉCRAN DE CONNEXION -->
   <div id="login-screen" class="fixed inset-0 z-[100] bg-appBg/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 transition-opacity duration-500">
-    <div class="bg-appCard p-10 rounded-3xl shadow-2xl max-w-sm w-full text-center border border-slate-700">
-      <span class="text-5xl mb-4 block">🍿</span>
-      <h2 class="text-2xl font-black text-appText tracking-tight mb-2">Ciné <span class="text-appPrimary">Randomizer</span></h2>
-      <p class="text-sm text-slate-400 mb-8">Connectez-vous pour synchroniser vos soirées films avec votre moitié.</p>
+    <div class="bg-appCard p-10 rounded-2xl shadow-2xl max-w-sm w-full text-center border border-white/5">
+      <h2 class="text-2xl font-black text-appText tracking-tight mb-2">Ciné<span class="text-appPrimary">Randomizer</span></h2>
+      <p class="text-sm text-appMuted mb-8">Connectez-vous pour synchroniser votre catalogue.</p>
       
-      <input type="email" id="email-input" placeholder="Adresse e-mail" class="w-full text-center text-sm font-bold bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 outline-none focus:border-appPrimary mb-3 transition-colors text-white">
+      <input type="email" id="email-input" placeholder="Adresse e-mail" class="w-full text-sm font-medium bg-black/50 border border-white/10 rounded-lg px-4 py-3.5 outline-none focus:border-appPrimary mb-3 transition-colors text-white">
       
-      <input type="password" id="pwd-input" placeholder="Mot de passe" class="w-full text-center text-sm font-bold bg-slate-900 border border-slate-700 rounded-xl px-4 py-3.5 outline-none focus:border-appPrimary mb-6 transition-colors text-white">
+      <input type="password" id="pwd-input" placeholder="Mot de passe" class="w-full text-sm font-medium bg-black/50 border border-white/10 rounded-lg px-4 py-3.5 outline-none focus:border-appPrimary mb-6 transition-colors text-white">
       
-      <button onclick="handleLogin()" id="btn-login" class="w-full bg-appPrimary hover:bg-appPrimaryHover text-white font-bold py-3.5 rounded-xl transition shadow-[0_0_15px_rgba(225,29,72,0.4)] flex justify-center items-center text-sm uppercase tracking-wide">
-        Entrer en salle
+      <button onclick="handleLogin()" id="btn-login" class="w-full bg-appPrimary hover:bg-appPrimaryHover text-white font-semibold py-3.5 rounded-lg transition flex justify-center items-center text-sm tracking-wide">
+        S'identifier
       </button>
-      <p id="login-error" class="text-red-400 text-sm font-bold mt-4 opacity-0 transition-opacity">Identifiants incorrects.</p>
+      <p id="login-error" class="text-red-500 text-sm font-medium mt-4 opacity-0 transition-opacity">Identifiants incorrects.</p>
     </div>
   </div>
 
-  <header class="bg-appCard border-b border-slate-700 sticky top-0 z-30 shadow-lg">
-    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <span class="text-3xl">🍿</span>
-        <div>
-          <h1 class="text-xl sm:text-2xl font-black text-appText tracking-tight">Ciné <span class="text-appPrimary">Randomizer</span></h1>
-          <p class="text-xs text-appMuted font-medium">Finis les débats du samedi soir !</p>
-        </div>
+  <header class="bg-appBg/80 backdrop-blur-lg border-b border-white/5 sticky top-0 z-30">
+    <div class="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <h1 class="text-xl sm:text-2xl font-black text-appText tracking-tighter">Ciné<span class="text-appPrimary">Randomizer</span></h1>
       </div>
-      <button onclick="handleLogout()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 transition-colors flex items-center justify-center border border-slate-600" title="Se déconnecter">
-        <span class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></span>
+      <button onclick="handleLogout()" class="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center border border-white/10" title="Se déconnecter">
+        <span class="w-2 h-2 rounded-full bg-green-500"></span>
       </button>
     </div>
     <!-- Navigation par onglets -->
-    <div class="max-w-4xl mx-auto px-4 flex space-x-2 overflow-x-auto hide-scrollbar text-sm font-bold">
-      <button id="tab-generator" onclick="switchTab('generator')" class="nav-tab text-appPrimary border-b-2 border-appPrimary py-3 px-4 whitespace-nowrap">🎲 Tirage au sort</button>
-      <button id="tab-catalogue" onclick="switchTab('catalogue')" class="nav-tab text-appMuted hover:text-appText border-b-2 border-transparent py-3 px-4 whitespace-nowrap">📚 Notre Catalogue</button>
+    <div class="max-w-5xl mx-auto px-6 flex space-x-6 overflow-x-auto hide-scrollbar text-sm font-medium">
+      <button id="tab-generator" onclick="switchTab('generator')" class="nav-tab text-white border-b-2 border-appPrimary py-3 whitespace-nowrap transition-colors">Tirage au sort</button>
+      <button id="tab-catalogue" onclick="switchTab('catalogue')" class="nav-tab text-appMuted hover:text-white border-b-2 border-transparent py-3 whitespace-nowrap transition-colors">Notre Catalogue</button>
     </div>
   </header>
 
-  <main class="flex-1 w-full max-w-4xl mx-auto px-4 py-6 flex flex-col pb-24">
+  <main class="flex-1 w-full max-w-5xl mx-auto px-4 py-8 flex flex-col pb-24">
     
-    <!-- SECTION GÉNÉRATEUR (LA ROULETTE) -->
-    <section id="sec-generator" class="flex flex-col flex-1 space-y-6">
+    <!-- SECTION GÉNÉRATEUR -->
+    <section id="sec-generator" class="flex flex-col flex-1 space-y-8 max-w-2xl mx-auto w-full">
       
       <!-- Zone d'affichage du résultat -->
-      <div class="bg-appCard rounded-3xl border border-slate-700 shadow-xl p-8 flex flex-col items-center justify-center text-center min-h-[250px] relative overflow-hidden">
+      <div class="bg-appCard rounded-2xl border border-white/5 shadow-2xl p-8 md:p-12 flex flex-col items-center justify-center text-center min-h-[300px] relative overflow-hidden">
+        
         <!-- Message par défaut -->
-        <div id="default-screen" class="space-y-3">
-          <div class="text-5xl mb-2">🎬</div>
-          <h2 class="text-2xl font-bold text-slate-300">Prêts pour le film ?</h2>
-          <p class="text-sm text-slate-500">Ajustez vos filtres et lancez la roulette.</p>
+        <div id="default-screen" class="space-y-2 opacity-60">
+          <h2 class="text-xl font-medium text-white">Que regardons-nous ce soir ?</h2>
+          <p class="text-sm text-appMuted">Ajustez vos préférences ci-dessous.</p>
         </div>
 
         <!-- Écran de roulette (en cours de tirage) -->
-        <div id="roulette-screen" class="hidden w-full">
-          <p class="text-appAccent font-bold text-sm tracking-widest uppercase mb-4 animate-pulse">Tirage en cours...</p>
-          <h2 id="roulette-text" class="text-3xl sm:text-5xl font-black text-white truncate px-2 w-full">Titre</h2>
+        <div id="roulette-screen" class="hidden w-full flex-col items-center">
+          <div class="w-12 h-1 bg-appPrimary mb-6 rounded-full animate-pulse"></div>
+          <h2 id="roulette-text" class="text-3xl sm:text-4xl font-black text-white truncate px-2 w-full tracking-tight">Recherche...</h2>
         </div>
 
         <!-- Écran du Gagnant -->
-        <div id="winner-screen" class="hidden w-full flex-col items-center justify-center animate-[fade-in_0.5s_ease-out]">
-          <span class="bg-appPrimary text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide mb-3 shadow-[0_0_10px_rgba(225,29,72,0.5)]">Le Choix Ultime</span>
-          <h2 id="winner-title" class="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-4 neon-text">Titre du Film</h2>
-          <div id="winner-badges" class="flex flex-wrap justify-center gap-2 mb-6">
+        <div id="winner-screen" class="hidden w-full flex-col items-center justify-center animate-fade-in">
+          <span class="text-[10px] font-bold px-2 py-1 rounded border border-appPrimary text-appPrimary uppercase tracking-widest mb-4">Sélection</span>
+          <h2 id="winner-title" class="text-3xl sm:text-4xl md:text-5xl font-black text-white mb-6 tracking-tight">Titre du Film</h2>
+          <div id="winner-badges" class="flex flex-wrap justify-center gap-2 mb-8">
             <!-- Badges injectés en JS -->
           </div>
-          <button onclick="markWinnerAsSeen()" class="text-xs text-slate-400 hover:text-white underline transition">
-            Marquer comme "Vu" pour ne plus le tirer
+          <button onclick="markWinnerAsSeen()" class="text-xs font-medium text-appMuted hover:text-white transition-colors py-2 px-4 rounded-full bg-white/5 hover:bg-white/10">
+            ✓ Marquer comme "Vu"
           </button>
         </div>
       </div>
 
-      <!-- Le Gros Bouton d'Action -->
-      <button id="btn-draw" onclick="startRoulette()" class="w-full bg-appPrimary hover:bg-appPrimaryHover text-white text-xl sm:text-2xl font-black py-5 rounded-2xl shadow-[0_4px_14px_0_rgba(225,29,72,0.39)] transition-transform active:scale-95 flex items-center justify-center gap-3">
-        <span class="text-2xl">🎰</span> Lancer le tirage !
+      <!-- Bouton d'Action Principal -->
+      <button id="btn-draw" onclick="startRoulette()" class="w-full bg-white text-black hover:bg-gray-200 text-lg font-bold py-4 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2">
+        ▶ Lancer la sélection
       </button>
 
-      <!-- Erreur si aucun film ne correspond -->
-      <div id="error-message" class="hidden bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-xl text-center text-sm font-medium">
-        Aucun film ne correspond à ces critères (ou vous les avez déjà tous vus !). Retirez quelques filtres.
+      <!-- Erreur -->
+      <div id="error-message" class="hidden bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl text-center text-sm font-medium">
+        Aucun titre ne correspond à ces critères (ou ils ont tous été vus). Retirez quelques filtres.
       </div>
 
       <!-- Filtres de recherche -->
-      <div class="bg-appCard p-5 rounded-2xl border border-slate-700 space-y-5">
-        <h3 class="font-bold text-slate-300 text-sm uppercase tracking-wider flex items-center justify-between">
-          <span>⚙️ Filtres pour ce soir</span>
-          <button onclick="resetFilters()" class="text-xs text-appPrimary hover:underline normal-case">Réinitialiser</button>
-        </h3>
+      <div class="space-y-6">
+        <div class="flex items-center justify-between border-b border-white/10 pb-2">
+          <h3 class="font-semibold text-white text-sm">Filtres de recherche</h3>
+          <button onclick="resetFilters()" class="text-xs text-appMuted hover:text-white transition-colors">Réinitialiser</button>
+        </div>
         
         <!-- Filtre Type -->
         <div>
-          <p class="text-xs text-slate-500 font-bold mb-2">TYPE DE FORMAT</p>
+          <p class="text-[10px] text-appMuted font-bold mb-3 uppercase tracking-widest">Format</p>
           <div class="flex flex-wrap gap-2">
-            <button onclick="toggleFilter('type', 'Film')" data-group="type" data-val="Film" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-4 py-2 rounded-xl text-sm font-semibold transition">🍿 Films</button>
-            <button onclick="toggleFilter('type', 'Série')" data-group="type" data-val="Série" class="filter-btn bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 px-4 py-2 rounded-xl text-sm font-semibold transition">📺 Séries</button>
-            <button onclick="toggleFilter('type', 'Documentaire')" data-group="type" data-val="Documentaire" class="filter-btn bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700 px-4 py-2 rounded-xl text-sm font-semibold transition">🌍 Documentaires</button>
+            <button onclick="toggleFilter('type', 'Film')" data-group="type" data-val="Film" class="filter-btn active-filter bg-white text-black px-4 py-1.5 rounded-full text-xs font-semibold transition-all">Films</button>
+            <button onclick="toggleFilter('type', 'Série')" data-group="type" data-val="Série" class="filter-btn bg-transparent text-appMuted border border-white/20 hover:border-white/50 px-4 py-1.5 rounded-full text-xs font-semibold transition-all">Séries</button>
+            <button onclick="toggleFilter('type', 'Documentaire')" data-group="type" data-val="Documentaire" class="filter-btn bg-transparent text-appMuted border border-white/20 hover:border-white/50 px-4 py-1.5 rounded-full text-xs font-semibold transition-all">Documentaires</button>
           </div>
         </div>
 
         <!-- Filtre Plateforme -->
         <div>
-          <p class="text-xs text-slate-500 font-bold mb-2">DISPONIBLE SUR</p>
+          <p class="text-[10px] text-appMuted font-bold mb-3 uppercase tracking-widest">Plateforme</p>
           <div class="flex flex-wrap gap-2">
-            <button onclick="toggleFilter('plateforme', 'Netflix')" data-group="plateforme" data-val="Netflix" class="filter-btn active-filter bg-red-900/30 text-red-400 border border-red-800/50 px-4 py-2 rounded-xl text-sm font-semibold transition">Netflix</button>
-            <button onclick="toggleFilter('plateforme', 'Prime')" data-group="plateforme" data-val="Prime" class="filter-btn active-filter bg-blue-900/30 text-blue-400 border border-blue-800/50 px-4 py-2 rounded-xl text-sm font-semibold transition">Prime Video</button>
-            <button onclick="toggleFilter('plateforme', 'Disney+')" data-group="plateforme" data-val="Disney+" class="filter-btn active-filter bg-indigo-900/30 text-indigo-400 border border-indigo-800/50 px-4 py-2 rounded-xl text-sm font-semibold transition">Disney+</button>
-            <button onclick="toggleFilter('plateforme', 'Canal+')" data-group="plateforme" data-val="Canal+" class="filter-btn active-filter bg-slate-800 text-slate-300 border border-slate-600 px-4 py-2 rounded-xl text-sm font-semibold transition">Canal+</button>
-            <button onclick="toggleFilter('plateforme', 'Autre')" data-group="plateforme" data-val="Autre" class="filter-btn active-filter bg-slate-800 text-slate-300 border border-slate-600 px-4 py-2 rounded-xl text-sm font-semibold transition">VOD / Autre</button>
+            <button onclick="toggleFilter('plateforme', 'Netflix')" data-group="plateforme" data-val="Netflix" class="filter-btn active-filter bg-white text-black px-4 py-1.5 rounded-full text-xs font-semibold transition-all">Netflix</button>
+            <button onclick="toggleFilter('plateforme', 'Prime')" data-group="plateforme" data-val="Prime" class="filter-btn active-filter bg-white text-black px-4 py-1.5 rounded-full text-xs font-semibold transition-all">Prime Video</button>
+            <button onclick="toggleFilter('plateforme', 'Disney+')" data-group="plateforme" data-val="Disney+" class="filter-btn active-filter bg-white text-black px-4 py-1.5 rounded-full text-xs font-semibold transition-all">Disney+</button>
+            <button onclick="toggleFilter('plateforme', 'Canal+')" data-group="plateforme" data-val="Canal+" class="filter-btn active-filter bg-white text-black px-4 py-1.5 rounded-full text-xs font-semibold transition-all">Canal+</button>
+            <button onclick="toggleFilter('plateforme', 'Autre')" data-group="plateforme" data-val="Autre" class="filter-btn bg-transparent text-appMuted border border-white/20 hover:border-white/50 px-4 py-1.5 rounded-full text-xs font-semibold transition-all">Autre</button>
           </div>
         </div>
 
         <!-- Filtre Genre -->
         <div>
-          <p class="text-xs text-slate-500 font-bold mb-2">HUMEUR / GENRE</p>
+          <p class="text-[10px] text-appMuted font-bold mb-3 uppercase tracking-widest">Genre</p>
           <div class="flex flex-wrap gap-2">
-            <button onclick="toggleFilter('genre', 'Comédie')" data-group="genre" data-val="Comédie" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold">😂 Comédie</button>
-            <button onclick="toggleFilter('genre', 'Action')" data-group="genre" data-val="Action" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold">💥 Action</button>
-            <button onclick="toggleFilter('genre', 'Sci-Fi / Fantasy')" data-group="genre" data-val="Sci-Fi / Fantasy" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold">🛸 Sci-Fi / Fantasy</button>
-            <button onclick="toggleFilter('genre', 'Thriller / Horreur')" data-group="genre" data-val="Thriller / Horreur" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold">🔪 Thriller / Horreur</button>
-            <button onclick="toggleFilter('genre', 'Drame')" data-group="genre" data-val="Drame" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold">🎭 Drame</button>
-            <button onclick="toggleFilter('genre', 'Animation')" data-group="genre" data-val="Animation" class="filter-btn active-filter bg-slate-600 text-white border border-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold">🎨 Animation</button>
+            <button onclick="toggleFilter('genre', 'Comédie')" data-group="genre" data-val="Comédie" class="filter-btn active-filter bg-white text-black px-3 py-1.5 rounded-full text-xs font-semibold transition-all">Comédie</button>
+            <button onclick="toggleFilter('genre', 'Action')" data-group="genre" data-val="Action" class="filter-btn active-filter bg-white text-black px-3 py-1.5 rounded-full text-xs font-semibold transition-all">Action</button>
+            <button onclick="toggleFilter('genre', 'Sci-Fi / Fantasy')" data-group="genre" data-val="Sci-Fi / Fantasy" class="filter-btn active-filter bg-white text-black px-3 py-1.5 rounded-full text-xs font-semibold transition-all">Sci-Fi / Fantasy</button>
+            <button onclick="toggleFilter('genre', 'Thriller / Horreur')" data-group="genre" data-val="Thriller / Horreur" class="filter-btn active-filter bg-white text-black px-3 py-1.5 rounded-full text-xs font-semibold transition-all">Thriller / Horreur</button>
+            <button onclick="toggleFilter('genre', 'Drame')" data-group="genre" data-val="Drame" class="filter-btn active-filter bg-white text-black px-3 py-1.5 rounded-full text-xs font-semibold transition-all">Drame</button>
+            <button onclick="toggleFilter('genre', 'Animation')" data-group="genre" data-val="Animation" class="filter-btn active-filter bg-white text-black px-3 py-1.5 rounded-full text-xs font-semibold transition-all">Animation</button>
           </div>
         </div>
       </div>
     </section>
 
     <!-- SECTION CATALOGUE -->
-    <section id="sec-catalogue" class="hidden flex-col flex-1 space-y-4">
-      <div class="flex items-center justify-between gap-4 bg-appCard p-4 rounded-2xl border border-slate-700">
-        <div class="relative flex-1">
-          <input type="text" id="searchInput" oninput="renderCatalogue()" placeholder="Rechercher un titre..." class="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-600 rounded-xl text-sm text-white focus:outline-none focus:border-appPrimary focus:ring-1 focus:ring-appPrimary transition">
-          <span class="absolute left-3.5 top-2 text-slate-400">🔍</span>
+    <section id="sec-catalogue" class="hidden flex-col flex-1 space-y-6">
+      
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="relative flex-1 max-w-md">
+          <input type="text" id="searchInput" oninput="renderCatalogue()" placeholder="Rechercher un titre..." class="w-full pl-10 pr-4 py-2.5 bg-appCard border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-white/30 transition-colors">
+          <span class="absolute left-3.5 top-2.5 text-appMuted">🔍</span>
         </div>
-        <div class="text-xs text-slate-400 font-bold whitespace-nowrap"><span id="catalogue-count">0</span> œuvres</div>
-      </div>
-
-      <div class="flex justify-end gap-2 text-xs font-medium px-2">
-        <button onclick="filterSeen(false)" id="btn-seen-false" class="text-appPrimary underline font-bold tracking-wide">À voir</button>
-        <span class="text-slate-600">|</span>
-        <button onclick="filterSeen(true)" id="btn-seen-true" class="text-slate-500 hover:text-slate-300 font-bold tracking-wide">Déjà vus</button>
+        
+        <div class="flex items-center gap-4 text-sm font-medium">
+          <span class="text-appMuted text-xs"><span id="catalogue-count">0</span> titres</span>
+          <div class="flex items-center bg-appCard rounded-lg p-1 border border-white/5">
+            <button onclick="filterSeen(false)" id="btn-seen-false" class="px-4 py-1.5 rounded-md bg-white/10 text-white transition-colors">À voir</button>
+            <button onclick="filterSeen(true)" id="btn-seen-true" class="px-4 py-1.5 rounded-md text-appMuted hover:text-white transition-colors">Déjà vus</button>
+          </div>
+        </div>
       </div>
 
       <!-- Grille du catalogue -->
-      <div id="catalogue-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-10">
+      <div id="catalogue-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-10">
         <!-- Rempli par JS -->
       </div>
     </section>
   </main>
 
   <!-- BOUTON FLOTTANT AJOUTER -->
-  <button onclick="openAddModal()" id="btn-add" class="fixed bottom-6 right-6 h-14 w-14 bg-appPrimary text-white rounded-full shadow-[0_0_20px_rgba(225,29,72,0.5)] flex items-center justify-center text-3xl hover:bg-appPrimaryHover transition transform hover:scale-105 z-40 hidden border-2 border-appBg">
+  <button onclick="openAddModal()" id="btn-add" class="fixed bottom-8 right-8 h-14 w-14 bg-white text-black rounded-full shadow-2xl flex items-center justify-center text-3xl hover:scale-105 transition-transform z-40 hidden">
     +
   </button>
 
   <!-- MODAL D'AJOUT -->
-  <dialog id="add-modal" class="p-0 rounded-3xl shadow-2xl backdrop:bg-appBg/80 backdrop-blur-sm max-w-md w-full mx-auto mt-20 border border-slate-700 bg-appCard">
-    <div class="p-6 text-white">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-black text-white">Ajouter au catalogue</h3>
-            <button onclick="closeAddModal()" class="text-slate-500 hover:text-white text-2xl font-bold leading-none">&times;</button>
+  <dialog id="add-modal" class="p-0 rounded-2xl shadow-2xl backdrop:bg-black/80 backdrop-blur-sm max-w-md w-full mx-auto mt-20 border border-white/10 bg-appCard">
+    <div class="p-8 text-white">
+        <div class="flex justify-between items-center mb-8">
+            <h3 class="text-xl font-bold text-white tracking-tight">Ajouter au catalogue</h3>
+            <button onclick="closeAddModal()" class="text-appMuted hover:text-white text-2xl font-light leading-none">&times;</button>
         </div>
-        <form id="add-form" onsubmit="submitNewMedia(event)" class="space-y-4">
+        <form id="add-form" onsubmit="submitNewMedia(event)" class="space-y-5">
             <div>
-                <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Titre</label>
-                <input type="text" id="f-titre" required placeholder="Ex: Inception..." class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-appPrimary text-white">
+                <label class="block text-[10px] font-bold text-appMuted uppercase tracking-widest mb-1.5">Titre</label>
+                <input type="text" id="f-titre" required placeholder="Ex: Inception..." class="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-appPrimary text-white transition-colors">
+                <p id="add-error" class="text-appPrimary text-xs font-semibold mt-2 hidden">Ce titre existe déjà dans le catalogue.</p>
             </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Type</label>
-                    <select id="f-type" class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-appPrimary text-white">
-                        <option value="Film">🍿 Film</option>
-                        <option value="Série">📺 Série</option>
-                        <option value="Documentaire">🌍 Docu</option>
+                    <label class="block text-[10px] font-bold text-appMuted uppercase tracking-widest mb-1.5">Type</label>
+                    <select id="f-type" class="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-appPrimary text-white transition-colors">
+                        <option value="Film">Film</option>
+                        <option value="Série">Série</option>
+                        <option value="Documentaire">Documentaire</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Plateforme</label>
-                    <select id="f-plateforme" class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-appPrimary text-white">
-                        <option value="Netflix">🔴 Netflix</option>
-                        <option value="Prime">🔵 Prime</option>
-                        <option value="Disney+">✨ Disney+</option>
-                        <option value="Canal+">➕ Canal+</option>
-                        <option value="Autre">🍿 VOD / Autre</option>
+                    <label class="block text-[10px] font-bold text-appMuted uppercase tracking-widest mb-1.5">Plateforme</label>
+                    <select id="f-plateforme" class="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-appPrimary text-white transition-colors">
+                        <option value="Netflix">Netflix</option>
+                        <option value="Prime">Prime Video</option>
+                        <option value="Disney+">Disney+</option>
+                        <option value="Canal+">Canal+</option>
+                        <option value="Autre">VOD / Autre</option>
                     </select>
                 </div>
             </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Genre</label>
-                    <select id="f-genre" class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-appPrimary text-white">
-                        <option value="Action">💥 Action</option>
-                        <option value="Comédie">😂 Comédie</option>
-                        <option value="Drame">🎭 Drame</option>
-                        <option value="Sci-Fi / Fantasy">🛸 Sci-Fi / Fantasy</option>
-                        <option value="Thriller / Horreur">🔪 Thriller</option>
-                        <option value="Animation">🎨 Animation</option>
+                    <label class="block text-[10px] font-bold text-appMuted uppercase tracking-widest mb-1.5">Genre</label>
+                    <select id="f-genre" class="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-appPrimary text-white transition-colors">
+                        <option value="Action">Action</option>
+                        <option value="Comédie">Comédie</option>
+                        <option value="Drame">Drame</option>
+                        <option value="Sci-Fi / Fantasy">Sci-Fi / Fantasy</option>
+                        <option value="Thriller / Horreur">Thriller / Horreur</option>
+                        <option value="Animation">Animation</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Durée approx.</label>
-                    <input type="text" id="f-duree" placeholder="Ex: 2h10 ou 45min/ép" class="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-appPrimary text-white">
+                    <label class="block text-[10px] font-bold text-appMuted uppercase tracking-widest mb-1.5">Durée approx.</label>
+                    <input type="text" id="f-duree" placeholder="Ex: 2h10 ou 45m/ép" class="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm outline-none focus:border-appPrimary text-white transition-colors">
                 </div>
             </div>
             
-            <button type="submit" id="btn-submit" class="w-full bg-appPrimary hover:bg-appPrimaryHover text-white font-bold py-3.5 rounded-xl mt-4 shadow-lg transition">Enregistrer le film</button>
+            <div class="pt-4">
+                <button type="submit" id="btn-submit" class="w-full bg-white hover:bg-gray-200 text-black font-semibold py-3.5 rounded-lg transition-colors text-sm">Enregistrer</button>
+            </div>
         </form>
     </div>
   </dialog>
@@ -872,7 +881,7 @@
     // Filtres actifs
     let activeFilters = {
       type: ['Film'],
-      plateforme: ['Netflix', 'Prime', 'Disney+', 'Canal+'],
+      plateforme: ['Netflix', 'Prime', 'Disney+', 'Canal+', 'Autre'],
       genre: ['Comédie', 'Action', 'Sci-Fi / Fantasy', 'Thriller / Horreur', 'Drame', 'Animation']
     };
 
@@ -912,7 +921,7 @@
         await signInWithEmailAndPassword(auth, email, pwd);
       } catch (error) {
         errorText.style.opacity = '1';
-        btn.innerHTML = `Entrer en salle`;
+        btn.innerHTML = `S'identifier`;
       }
     };
 
@@ -971,14 +980,14 @@
       const rouletteScreen = document.getElementById('roulette-screen');
       const rouletteText = document.getElementById('roulette-text');
       rouletteScreen.classList.remove('hidden');
-      rouletteScreen.classList.add('flex', 'flex-col', 'items-center', 'justify-center');
+      rouletteScreen.classList.add('flex');
       
       btnDraw.disabled = true;
       btnDraw.classList.add('opacity-50', 'cursor-not-allowed');
-      btnDraw.innerHTML = '🎰 Tirage en cours...';
+      btnDraw.innerHTML = 'Recherche en cours...';
 
       let ticks = 0;
-      const maxTicks = 35;
+      const maxTicks = 25;
       
       rouletteInterval = setInterval(() => {
         const randomItem = candidates[Math.floor(Math.random() * candidates.length)];
@@ -992,9 +1001,9 @@
           
           btnDraw.disabled = false;
           btnDraw.classList.remove('opacity-50', 'cursor-not-allowed');
-          btnDraw.innerHTML = '<span class="text-2xl">🔄</span> Relancer un tirage';
+          btnDraw.innerHTML = '▶ Relancer la sélection';
         }
-      }, 80);
+      }, 70);
     }
 
     function showWinner(winner) {
@@ -1010,9 +1019,9 @@
       
       const badgesContainer = document.getElementById('winner-badges');
       badgesContainer.innerHTML = `
-        <span class="bg-slate-700 text-slate-200 border border-slate-600 px-3 py-1 rounded-lg text-xs font-bold">${getPlatEmoji(winner.plateforme)} ${winner.plateforme}</span>
-        <span class="bg-slate-700 text-slate-200 border border-slate-600 px-3 py-1 rounded-lg text-xs font-bold">${winner.genre}</span>
-        <span class="bg-slate-700 text-slate-200 border border-slate-600 px-3 py-1 rounded-lg text-xs font-bold">⏱️ ${winner.duree}</span>
+        <span class="bg-white/10 border border-white/20 px-3 py-1.5 rounded-full text-xs font-semibold">${getPlatEmoji(winner.plateforme)} ${winner.plateforme}</span>
+        <span class="bg-white/10 border border-white/20 px-3 py-1.5 rounded-full text-xs font-semibold">${winner.genre}</span>
+        <span class="bg-white/10 border border-white/20 px-3 py-1.5 rounded-full text-xs font-semibold">${winner.duree}</span>
       `;
     }
 
@@ -1023,7 +1032,7 @@
         
         const btn = document.querySelector('#winner-screen button');
         const originalText = btn.innerText;
-        btn.innerText = "✅ Enregistré pour tous les deux !";
+        btn.innerText = "Enregistré";
         btn.classList.add('text-green-400');
         
         setTimeout(() => {
@@ -1032,7 +1041,7 @@
           document.getElementById('winner-screen').classList.add('hidden');
           document.getElementById('winner-screen').classList.remove('flex');
           document.getElementById('default-screen').classList.remove('hidden');
-          document.getElementById('btn-draw').innerHTML = '<span class="text-2xl">🎰</span> Lancer le tirage !';
+          document.getElementById('btn-draw').innerHTML = '▶ Lancer la sélection';
         }, 1500);
       }
     }
@@ -1054,22 +1063,12 @@
         const val = btn.dataset.val;
         const isActive = activeFilters[group].includes(val);
         
-        const baseClasses = group === 'genre' ? 'px-3 py-1.5 rounded-lg text-xs' : 'px-4 py-2 rounded-xl text-sm';
-        
         if (isActive) {
-          btn.classList.add('active-filter');
-          if(group === 'type' || group === 'genre') {
-            btn.className = `filter-btn active-filter bg-appPrimary text-white font-bold border-2 border-appPrimary shadow-[0_0_10px_rgba(225,29,72,0.5)] transition ${baseClasses}`;
-          } else if (group === 'plateforme') {
-            if(val==='Netflix') btn.className = `filter-btn active-filter bg-red-600 text-white font-bold border-2 border-red-500 shadow-[0_0_10px_rgba(220,38,38,0.5)] transition ${baseClasses}`;
-            if(val==='Prime') btn.className = `filter-btn active-filter bg-blue-600 text-white font-bold border-2 border-blue-500 shadow-[0_0_10px_rgba(37,99,235,0.5)] transition ${baseClasses}`;
-            if(val==='Disney+') btn.className = `filter-btn active-filter bg-indigo-600 text-white font-bold border-2 border-indigo-500 shadow-[0_0_10px_rgba(79,70,229,0.5)] transition ${baseClasses}`;
-            if(val==='Canal+') btn.className = `filter-btn active-filter bg-slate-900 text-white font-bold border-2 border-slate-400 shadow-[0_0_10px_rgba(148,163,184,0.5)] transition ${baseClasses}`;
-            if(val==='Autre') btn.className = `filter-btn active-filter bg-slate-700 text-white font-bold border-2 border-slate-500 shadow-[0_0_10px_rgba(100,116,139,0.5)] transition ${baseClasses}`;
-          }
+          btn.classList.add('active-filter', 'bg-white', 'text-black', 'border-transparent');
+          btn.classList.remove('bg-transparent', 'text-appMuted', 'border-white/20');
         } else {
-          btn.classList.remove('active-filter');
-          btn.className = `filter-btn bg-slate-800 text-slate-500 border border-slate-700 opacity-40 hover:opacity-80 font-medium transition ${baseClasses}`;
+          btn.classList.remove('active-filter', 'bg-white', 'text-black', 'border-transparent');
+          btn.classList.add('bg-transparent', 'text-appMuted', 'border-white/20');
         }
         btn.dataset.group = group;
         btn.dataset.val = val;
@@ -1088,8 +1087,8 @@
     // --- CATALOGUE ---
     window.filterSeen = (showSeen) => {
       showSeenInCatalogue = showSeen;
-      document.getElementById('btn-seen-false').className = !showSeen ? "text-appPrimary underline font-bold tracking-wide" : "text-slate-500 hover:text-slate-300 font-bold tracking-wide";
-      document.getElementById('btn-seen-true').className = showSeen ? "text-appPrimary underline font-bold tracking-wide" : "text-slate-500 hover:text-slate-300 font-bold tracking-wide";
+      document.getElementById('btn-seen-false').className = !showSeen ? "px-4 py-1.5 rounded-md bg-white/10 text-white transition-colors" : "px-4 py-1.5 rounded-md text-appMuted hover:text-white transition-colors";
+      document.getElementById('btn-seen-true').className = showSeen ? "px-4 py-1.5 rounded-md bg-white/10 text-white transition-colors" : "px-4 py-1.5 rounded-md text-appMuted hover:text-white transition-colors";
       renderCatalogue();
     }
 
@@ -1116,34 +1115,33 @@
         return matchesSeenStatus && matchesSearch;
       });
 
-      // Sort recent first if they are custom, otherwise by ID
       itemsToDisplay.sort((a,b) => b.id - a.id);
 
       document.getElementById('catalogue-count').innerText = itemsToDisplay.length;
 
       if (itemsToDisplay.length === 0) {
-        grid.innerHTML = `<div class="col-span-full py-10 text-center text-slate-500 italic">Aucune œuvre trouvée dans cette liste.</div>`;
+        grid.innerHTML = `<div class="col-span-full py-10 text-center text-appMuted text-sm">Aucune œuvre trouvée dans cette liste.</div>`;
         return;
       }
 
       itemsToDisplay.forEach(item => {
         const isSeen = seenIds.includes(item.id);
         const card = document.createElement('div');
-        card.className = "bg-appCard border border-slate-700 rounded-2xl p-4 flex flex-col justify-between h-full hover:border-slate-500 transition-colors";
+        card.className = "movie-card bg-appCard border border-white/5 rounded-xl p-5 flex flex-col justify-between h-full";
         
         card.innerHTML = `
           <div>
-            <div class="flex justify-between items-start mb-2">
-              <span class="text-[10px] uppercase tracking-widest font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded-md">${item.type}</span>
-              <button onclick="toggleSeenStatus(${item.id})" class="text-xs flex items-center gap-1 ${isSeen ? 'text-appPrimary hover:text-appPrimaryHover' : 'text-slate-500 hover:text-slate-300'} transition font-bold">
-                ${isSeen ? '✅ Marqué Vu' : '👁️ Marquer Vu'}
+            <div class="flex justify-between items-start mb-3">
+              <span class="text-[10px] uppercase tracking-widest font-semibold text-appMuted">${item.type}</span>
+              <button onclick="toggleSeenStatus(${item.id})" class="text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1 ${isSeen ? 'text-appPrimary hover:text-appPrimaryHover' : 'text-appMuted hover:text-white'} transition-colors">
+                ${isSeen ? '✓ Marqué Vu' : '+ Marquer Vu'}
               </button>
             </div>
-            <h4 class="font-bold text-lg text-white leading-tight mb-2 pr-4">${item.titre}</h4>
+            <h4 class="font-bold text-lg text-white leading-tight mb-2">${item.titre}</h4>
           </div>
-          <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-700/50 text-xs font-semibold text-slate-300">
-            <span class="bg-slate-800 px-2 py-1 rounded">${getPlatEmoji(item.plateforme)} ${item.plateforme}</span>
-            <span class="bg-slate-800 px-2 py-1 rounded">${item.genre}</span>
+          <div class="flex flex-wrap items-center gap-2 mt-4 text-[11px] font-medium text-appMuted">
+            <span class="border border-white/10 px-2 py-1 rounded">${getPlatEmoji(item.plateforme)} ${item.plateforme}</span>
+            <span class="border border-white/10 px-2 py-1 rounded">${item.genre}</span>
           </div>
         `;
         grid.appendChild(card);
@@ -1161,18 +1159,22 @@
     // --- NAVIGATION ---
     window.switchTab = (tabId) => {
       document.querySelectorAll('.nav-tab').forEach(t => {
-        t.classList.remove('text-appPrimary', 'border-appPrimary');
+        t.classList.remove('text-white', 'border-appPrimary');
         t.classList.add('text-appMuted', 'border-transparent');
       });
       const activeTab = document.getElementById(`tab-${tabId}`);
       activeTab.classList.remove('text-appMuted', 'border-transparent');
-      activeTab.classList.add('text-appPrimary', 'border-appPrimary');
+      activeTab.classList.add('text-white', 'border-appPrimary');
       
       document.getElementById('sec-generator').classList.add('hidden');
       document.getElementById('sec-catalogue').classList.add('hidden');
       
       document.getElementById(`sec-${tabId}`).classList.remove('hidden');
-      document.getElementById(`sec-${tabId}`).classList.add('flex');
+      if(tabId === 'generator') {
+        document.getElementById(`sec-${tabId}`).classList.add('flex');
+      } else {
+        document.getElementById(`sec-${tabId}`).classList.add('flex');
+      }
     }
 
     // --- AJOUT DE FILMS/SÉRIES ---
@@ -1180,25 +1182,41 @@
     window.closeAddModal = () => {
         document.getElementById('add-modal').close();
         document.getElementById('add-form').reset();
+        document.getElementById('add-error').classList.add('hidden');
     };
 
     window.submitNewMedia = async (e) => {
         e.preventDefault();
         const btn = document.getElementById('btn-submit');
         const oldText = btn.innerText;
+        
+        const titreInput = document.getElementById('f-titre').value.trim();
+        const errorMsg = document.getElementById('add-error');
+        
+        // VÉRIFICATION DU DOUBLON
+        const isDuplicate = database.some(item => item.titre.toLowerCase() === titreInput.toLowerCase());
+        
+        if (isDuplicate) {
+            errorMsg.classList.remove('hidden');
+            return;
+        }
+        
+        errorMsg.classList.add('hidden');
         btn.innerText = "Ajout en cours...";
         
         const newMedia = {
-            id: Date.now(), // ID unique pour que le Randomizer puisse le retrouver
-            titre: document.getElementById('f-titre').value,
+            id: Date.now(),
+            titre: titreInput,
             type: document.getElementById('f-type').value,
             plateforme: document.getElementById('f-plateforme').value,
             genre: document.getElementById('f-genre').value,
             duree: document.getElementById('f-duree').value || "Inconnue"
         };
 
-        customMedia.unshift(newMedia); // Ajout local
-        await saveCloudState(); // Envoi dans le cloud avec l'historique des vus
+        customMedia.unshift(newMedia);
+        database = [...baseDatabase, ...customMedia];
+
+        await saveCloudState();
         
         closeAddModal();
         switchTab('catalogue');
